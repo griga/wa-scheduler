@@ -1,0 +1,1 @@
+console.log("Hello, World! background script is running.");

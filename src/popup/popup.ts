@@ -1,0 +1,1 @@
+console.log("Hello, World! from popup script is running.");
