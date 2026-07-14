@@ -3,6 +3,7 @@
     "target": "es6",
     "module": "nodenext",
     "moduleResolution": "nodenext",
+    "types": ["chrome"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

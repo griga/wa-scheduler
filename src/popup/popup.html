@@ -1,7 +1,74 @@
 <html>
-  <body>
-    <h1>Hello Extensions 111</h1>
-		<script type="module" src="./popup.js"></script>
+  <head>
+    <style>
+      body {
+        width: 320px;
+        margin: 0;
+        padding: 12px;
+        font-family: Arial, sans-serif;
+      }
 
+      h1 {
+        font-size: 16px;
+        margin: 0 0 12px 0;
+      }
+
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      label {
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      input,
+      textarea,
+      button {
+        box-sizing: border-box;
+        width: 100%;
+        font-size: 12px;
+        padding: 6px;
+      }
+
+      textarea {
+        min-height: 72px;
+        resize: vertical;
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .status {
+        margin-top: 10px;
+        font-size: 12px;
+        white-space: pre-line;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>WhatsApp scheduler</h1>
+    <form id="schedulerForm">
+      <label for="groupChatName">groupchatname</label>
+      <input id="groupChatName" name="groupChatName" autocomplete="off" required />
+
+      <label for="messageText">messagetxt</label>
+      <textarea id="messageText" name="messageText" required></textarea>
+
+      <label for="intervalSeconds">intervallinseconds</label>
+      <input id="intervalSeconds" name="intervalSeconds" type="number" min="1" required />
+
+      <div class="actions">
+        <button id="startBtn" type="submit">Start</button>
+        <button id="stopBtn" type="button">Stop</button>
+      </div>
+    </form>
+
+    <div id="status" class="status">Loading…</div>
+    <script type="module" src="./popup.js"></script>
   </body>
 </html>

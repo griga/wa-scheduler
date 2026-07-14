@@ -1,21 +1,23 @@
 {
-  "name": "Hello Extensions",
-  "description": "Super simple Chrome extension",
+  "name": "WA Scheduled Messages",
+  "description": "Schedule repeated WhatsApp group messages from a simple popup.",
   "version": "1.0",
   "manifest_version": 3,
+  "permissions": ["storage", "alarms", "tabs"],
+  "host_permissions": ["https://web.whatsapp.com/*"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": "img/hi image.png"
   },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
   "content_scripts": [
     {
-      "js": [
-        "content.js"
-      ],
-      "matches": [
-        "https://chromewebstore.google.com/*",
-        "https://developer.chrome.com/docs/webstore/*"
-      ]
+      "js": ["content.js"],
+      "matches": ["https://web.whatsapp.com/*"],
+      "run_at": "document_idle"
     }
   ]
 }
