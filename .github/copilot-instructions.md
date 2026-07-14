@@ -1,29 +1,112 @@
-- [x] Verify that the copilot-instructions.md file in the .github directory is created.
+# Copilot Instructions — Chrome Extension (pnpm + TypeScript + Vite)
 
-- [x] Clarify Project Requirements
-	- Using a JavaScript Hello World style Chrome Extension (Manifest V3) starter.
+## Project context
+This repository contains a Chrome Extension developed with:
+- **Package manager:** pnpm
+- **Language:** TypeScript
+- **Bundler/dev server:** Vite
+- **Target platform:** Chrome Extensions (Manifest V3)
 
-- [x] Scaffold the Project
-	- Created manifest, source files, scripts, placeholders, and README in the base folder.
+Assume all code changes should preserve Chrome extension compatibility and MV3 constraints.
 
-- [x] Customize the Project
-	- Skipped custom feature work because this is a Hello World starter scaffold.
+---
 
-- [x] Install Required Extensions
-	- No extensions needed.
+## Goals for Copilot
+When generating or editing code, prioritize:
+1. Correct **Manifest V3** architecture.
+2. Strong **TypeScript typings** and minimal `any`.
+3. Small, maintainable modules with clear file boundaries.
+4. Secure defaults (least privilege permissions, safe message passing).
+5. Fast local development and reliable production builds via Vite.
 
-- [ ] Compile the Project
-	- Blocked: Node.js/npm are not installed in this environment, so validation could not run successfully.
+---
 
-- [x] Create and Run Task
-	- Created and ran task `Validate Chrome Extension` in `.vscode/tasks.json`.
+## Tech and conventions
 
-- [ ] Launch the Project
-	- Pending user confirmation for debug/launch mode.
+### Package manager
+- Use `pnpm` commands, never npm/yarn equivalents.
+- Prefer scripts in `package.json` over ad hoc commands.
+- When adding dependencies, choose the smallest suitable package.
 
-- [x] Ensure Documentation is Complete
-	- README and copilot-instructions are present and updated; HTML comments removed.
+### TypeScript
+- Keep strict typing on (`strict: true` expected).
+- Export explicit types for shared messages, storage schema, and settings.
+- Avoid `as unknown as ...` and unsafe casts.
+- Prefer discriminated unions for runtime message contracts.
 
-- Work through each checklist item systematically.
-- Keep communication concise and focused.
-- Follow development best practices.
+### Vite
+- Keep Vite config simple and explicit.
+- Ensure separate entry points build correctly for extension parts:
+  - background service worker
+  - content scripts
+  - popup/options pages
+- Treat extension output as static assets suitable for `chrome://extensions` loading.
+
+---
+
+## Chrome Extension architecture (MV3)
+
+### Required components
+- **manifest.json** (MV3)
+- **background** service worker (event-driven, no long-running assumptions)
+- **content scripts** for page interaction
+- **UI pages** (popup/options) as needed
+
+### Service worker rules
+- Do not rely on global in-memory state persisting forever.
+- Rehydrate state from `chrome.storage` when needed.
+- Use alarms, storage, and message passing for coordination.
+- Keep handlers idempotent and resilient to restarts.
+
+### Content scripts
+- Minimize DOM churn and avoid page breakage.
+- Use isolated, namespaced CSS/classes for injected UI.
+- Never assume specific page structure without guards.
+- Fail gracefully when target elements are missing.
+
+### Messaging
+- Define typed request/response contracts in shared files.
+- Validate message shape at runtime for untrusted boundaries.
+- Centralize message types and action constants.
+
+### Storage
+- Prefer `chrome.storage.local` unless sync is explicitly needed.
+- Define typed storage keys and version migrations.
+- Provide defaults and corruption/fallback handling.
+
+---
+
+## Security and privacy requirements
+- Request the **minimum permissions** required.
+- Prefer `activeTab` over broad host permissions when possible.
+- Avoid `eval`, dynamic code execution, and remote code loading.
+- Sanitize any HTML insertion; prefer textContent over innerHTML.
+- Never log secrets/tokens.
+- Keep any external network requests explicit, documented, and minimal.
+
+---
+
+## Suggested folder structure
+Use this as a baseline (adapt only if requested):
+
+```text
+src/
+  background/
+    index.ts
+  content/
+    index.ts
+  popup/
+    index.html
+    main.ts
+  options/
+    index.html
+    main.ts
+  shared/
+    messaging.ts
+    storage.ts
+    types.ts
+  styles/
+    content.css
+manifest.json
+vite.config.mjs
+tsconfig.json
