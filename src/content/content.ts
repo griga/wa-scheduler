@@ -1,11 +1,4 @@
 import type { ContentRequest, ContentResponse } from "../shared/types";
-import {
-  findElementByTextContent,
-  findFirstVisibleElement,
-  setEditableText,
-  wait,
-  waitForElement,
-} from "../shared/dom.utils";
 
 chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResponse) => {
   if (message.type !== "whatsapp:send-message") {
@@ -20,18 +13,12 @@ async function sendMessageToGroup(
   groupChatName: string,
   messageText: string
 ): Promise<ContentResponse> {
-  const chatsButton = await waitForElement(
-    () => document.querySelector<HTMLElement>("[aria-label='Chats']"),
-    7000
-  );
+  const chatsButton = await waitForElement<HTMLElement>("[aria-label='Chats']");
   if (!chatsButton)
     return { ok: false, error: "WhatsApp Web is not ready yet." };
   chatsButton.click();
 
-  const searchContainer = await waitForElement(
-    () => document.querySelector("[data-testid='chat-list-search-container']"),
-    7000
-  );
+  const searchContainer = await waitForElement("[data-testid='chat-list-search-container']");
   if (!searchContainer)
     return { ok: false, error: "WhatsApp Web chat list is not ready yet." };
 
@@ -41,10 +28,7 @@ async function sendMessageToGroup(
     return { ok: false, error: `Group "${groupChatName}" was not found.` };
   }
 
-  const composer = (await waitForElement(
-    () => document.querySelector<HTMLElement>("footer div[role='textbox'][contenteditable='true']"),
-    5000
-  )) as HTMLElement | null;
+  const composer = await waitForElement<HTMLElement>("footer div[role='textbox'][contenteditable='true']");
 
   if (!composer) {
     return { ok: false, error: "Message composer is not available." };
@@ -86,14 +70,17 @@ async function openGroupChat(groupChatName: string): Promise<boolean> {
   setEditableText(searchBox, groupChatName);
   await wait(800);
 
-  const foundAfterSearch = await waitForElement(
-    () => findElementByTextContent(
+  let foundAfterSearch: HTMLElement | null = null;
+  for (let i = 0; i < 20; i++) {
+    foundAfterSearch = findElementByTextContent<HTMLElement>(
       "[data-testid='chat-list']",
       "[data-testid^='list-item-']",
       groupChatName
-    ),
-    5000
-  );
+    );
+    if (foundAfterSearch) break;
+    await wait(250);
+  }
+
   if (!foundAfterSearch) {
     return false;
   }
@@ -101,4 +88,115 @@ async function openGroupChat(groupChatName: string): Promise<boolean> {
   foundAfterSearch.click();
   await wait(250);
   return true;
+}
+
+
+
+//
+//
+//
+//
+//
+//
+// utils
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForElement<TElement extends Element>(
+  selector: string
+): Promise<TElement | null> {
+  const element = document.querySelector<TElement>(selector);
+  if (element) return element;
+
+  const root = document.documentElement;
+  if (!root) return null;
+
+  return new Promise((resolve) => {
+    let isSettled = false;
+
+    const observer = new MutationObserver(() => {
+      const nextElement = document.querySelector<TElement>(selector);
+      if (!nextElement) {
+        return;
+      }
+
+      settle(nextElement);
+    });
+
+    const settle = (value: TElement | null) => {
+      if (isSettled) {
+        return;
+      }
+
+      isSettled = true;
+      observer.disconnect();
+      resolve(value);
+    };
+
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      characterData: true,
+    });
+  });
+}
+
+function setEditableText(element: HTMLElement, value: string): void {
+  element.focus();
+
+  if (element.textContent?.trim() !== value.trim()) {
+    element.textContent = value;
+  }
+
+  element.dispatchEvent(
+    new InputEvent("input", { bubbles: true, data: value, inputType: "insertText" })
+  );
+}
+
+function isVisible(element: HTMLElement): boolean {
+  return element.offsetParent !== null;
+}
+
+function findElementByTextContent<TElement extends HTMLElement>(
+  containerSelector: string,
+  itemSelector: string,
+  targetText: string
+): TElement | null {
+  const target = targetText.trim().toLowerCase();
+  const container = document.querySelector<HTMLElement>(containerSelector);
+  if (!container) {
+    return null;
+  }
+
+  const items = Array.from(container.querySelectorAll<TElement>(itemSelector));
+
+  for (const item of items) {
+    const text = item.innerText?.trim().toLowerCase();
+    if (text && text.includes(target)) {
+      return item;
+    }
+  }
+
+  return null;
+}
+
+function findFirstVisibleElement<TElement extends HTMLElement>(
+  containerSelector: string,
+  selectors: string[]
+): TElement | null {
+  const container = document.querySelector<HTMLElement>(containerSelector);
+  if (!container) {
+    return null;
+  }
+
+  for (const selector of selectors) {
+    const element = container.querySelector<TElement>(selector);
+    if (element && isVisible(element)) {
+      return element;
+    }
+  }
+
+  return null;
 }

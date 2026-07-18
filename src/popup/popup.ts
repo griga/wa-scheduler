@@ -1,5 +1,4 @@
 import type { RuntimeRequest, RuntimeResponse, SchedulerStatus } from "../shared/types";
-import { queryRequiredElements } from "../shared/dom.utils";
 
 const {
   form,
@@ -125,4 +124,20 @@ function emptyStatus(): SchedulerStatus {
     lastError: null,
     whatsappTabOpen: false,
   };
+}
+
+function queryRequiredElements<T extends Record<string, string>>(
+  selectors: T,
+): { [K in keyof T]: Element } {
+  const entries = Object.entries(selectors).map(([key, selector]) => {
+    const element = document.querySelector(selector);
+
+    if (!element) {
+      throw new Error(`Required element not found for selector: ${selector}`);
+    }
+
+    return [key, element] as const;
+  });
+
+  return Object.fromEntries(entries) as { [K in keyof T]: Element };
 }
