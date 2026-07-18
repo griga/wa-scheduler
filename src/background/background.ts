@@ -31,9 +31,7 @@ chrome.runtime.onMessage.addListener((message: RuntimeRequest, _sender, sendResp
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name !== ALARM_NAME) {
-    return;
-  }
+  if (alarm.name !== ALARM_NAME) return
 
   void runScheduledSend();
 });

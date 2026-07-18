@@ -1,11 +1,11 @@
 import type { RuntimeRequest, RuntimeResponse, SchedulerStatus } from "../shared/types";
 
-const form = document.querySelector<HTMLFormElement>("#schedulerForm");
-const groupChatNameInput = document.querySelector<HTMLInputElement>("#groupChatName");
-const messageTextInput = document.querySelector<HTMLTextAreaElement>("#messageText");
-const intervalSecondsInput = document.querySelector<HTMLInputElement>("#intervalSeconds");
-const stopButton = document.querySelector<HTMLButtonElement>("#stopBtn");
-const statusNode = document.querySelector<HTMLDivElement>("#status");
+const form = document.querySelector<HTMLFormElement>("#schedulerForm")!;
+const groupChatNameInput = document.querySelector<HTMLInputElement>("#groupChatName")!;
+const messageTextInput = document.querySelector<HTMLTextAreaElement>("#messageText")!;
+const intervalSecondsInput = document.querySelector<HTMLInputElement>("#intervalSeconds")!;
+const stopButton = document.querySelector<HTMLButtonElement>("#stopBtn")!;
+const statusNode = document.querySelector<HTMLDivElement>("#status")!;
 
 if (
   !form ||
@@ -111,8 +111,8 @@ function formatTimestamp(timestamp: number | null): string {
 function emptyStatus(): SchedulerStatus {
   return {
     enabled: false,
-    groupChatName: "",
-    messageText: "",
+    groupChatName: "m22",
+    messageText: Math.random().toString(36).substring(2, 8),
     intervalSeconds: 60,
     nextRunAt: null,
     lastRunAt: null,

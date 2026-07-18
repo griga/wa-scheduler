@@ -13,10 +13,21 @@ async function sendMessageToGroup(
   groupChatName: string,
   messageText: string
 ): Promise<ContentResponse> {
-  const paneSide = await waitForElement(() => document.querySelector("#pane-side"), 7000);
-  if (!paneSide) {
+  const chatsButton = await waitForElement(
+    () => document.querySelector<HTMLElement>("[aria-label='Chats']"),
+    7000
+  );
+  if (!chatsButton)
+    return { ok: false, error: "WhatsApp Web is not ready yet." };
+  chatsButton.click();
+
+  const searchContainer = await waitForElement(
+    () => document.querySelector("[data-testid='chat-list-search-container']"),
+    7000
+  );
+  if (!searchContainer)
     return { ok: false, error: "WhatsApp Web chat list is not ready yet." };
-  }
+
 
   const opened = await openGroupChat(groupChatName);
   if (!opened) {
@@ -33,8 +44,7 @@ async function sendMessageToGroup(
   }
 
   setEditableText(composer, messageText);
-  const sendButton = document.querySelector<HTMLElement>("footer button span[data-icon='send']")
-    ?.parentElement as HTMLButtonElement | null;
+  const sendButton = document.querySelector<HTMLElement>("footer button[aria-label='Send']");
 
   if (sendButton) {
     sendButton.click();
@@ -54,21 +64,25 @@ async function sendMessageToGroup(
 }
 
 async function openGroupChat(groupChatName: string): Promise<boolean> {
-  const existing = findChatListItem(groupChatName);
-  if (existing) {
-    existing.click();
-    await wait(250);
-    return true;
-  }
 
   const searchBox = findSearchBox();
+  console.log("searchBox", searchBox);
   if (!searchBox) {
     return false;
   }
 
+  // Open/focus chats search before typing the target term.
+  searchBox.click();
+  await wait(100);
+
   setEditableText(searchBox, groupChatName);
   await wait(800);
-  const foundAfterSearch = findChatListItem(groupChatName);
+
+  const foundAfterSearch = await waitForElement(
+    () => findChatListItem(groupChatName),
+    5000
+  );
+  console.log("foundAfterSearch", foundAfterSearch);
   if (!foundAfterSearch) {
     return false;
   }
@@ -80,17 +94,20 @@ async function openGroupChat(groupChatName: string): Promise<boolean> {
 
 function findChatListItem(groupChatName: string): HTMLElement | null {
   const target = groupChatName.trim().toLowerCase();
-  const titleNodes = Array.from(document.querySelectorAll<HTMLElement>("#pane-side span[title]"));
+  const chatList = document.querySelector<HTMLElement>("[data-testid='chat-list']");
+  console.log("chatList", chatList);
+  if (!chatList) {
+    return null;
+  }
 
-  for (const node of titleNodes) {
-    const nodeTitle = node.getAttribute("title")?.trim().toLowerCase();
-    if (nodeTitle === target) {
-      const clickable =
-        node.closest<HTMLElement>("div[role='listitem']") ??
-        node.closest<HTMLElement>("div[role='row']") ??
-        node.closest<HTMLElement>("li") ??
-        node;
-      return clickable;
+  const listItems = Array.from(
+    chatList.querySelectorAll<HTMLElement>("[data-testid^='list-item-']")
+  );
+
+  for (const item of listItems) {
+    const text = item.innerText?.trim().toLowerCase();
+    if (text && text.includes(target)) {
+      return item;
     }
   }
 
@@ -98,27 +115,28 @@ function findChatListItem(groupChatName: string): HTMLElement | null {
 }
 
 function findSearchBox(): HTMLElement | null {
-  const selectors = [
-    "#side div[role='textbox'][contenteditable='true']",
-    "div[aria-label='Search input textbox'][role='textbox'][contenteditable='true']",
-    "div[title='Search input textbox'][role='textbox'][contenteditable='true']",
-    "div[data-tab='3'][role='textbox'][contenteditable='true']",
-  ];
+  const container = document.querySelector<HTMLElement>(
+    "[data-testid='chat-list-search-container']"
+  );
+  if (!container)
+    return null;
 
-  for (const selector of selectors) {
-    const element = document.querySelector<HTMLElement>(selector);
-    if (element && isVisible(element)) {
-      return element;
-    }
-  }
+
+  const textbox =
+    container.querySelector<HTMLElement>("[role='textbox']") ??
+    container.querySelector<HTMLElement>("[contenteditable='true']");
+
+  if (textbox && isVisible(textbox))
+    return textbox;
+
 
   return null;
 }
 
 function setEditableText(element: HTMLElement, value: string): void {
   element.focus();
-  document.execCommand("selectAll", false);
-  document.execCommand("insertText", false, value);
+  // document.execCommand("selectAll", false);
+  // document.execCommand("insertText", false, value);
 
   if (element.textContent?.trim() !== value.trim()) {
     element.textContent = value;
