@@ -157,15 +157,46 @@ async function waitForElement<TElement extends Element>(
   getElement: () => TElement | null,
   timeoutMs: number
 ): Promise<TElement | null> {
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < timeoutMs) {
-    const element = getElement();
-    if (element) {
-      return element;
-    }
-
-    await wait(150);
+  const element = getElement();
+  if (element) {
+    return element;
   }
 
-  return null;
+  const root = document.documentElement;
+  if (!root) {
+    return null;
+  }
+
+  return new Promise((resolve) => {
+    let isSettled = false;
+    let timeoutId = 0;
+
+    const observer = new MutationObserver(() => {
+      const nextElement = getElement();
+      if (!nextElement) {
+        return;
+      }
+
+      settle(nextElement);
+    });
+
+    const settle = (value: TElement | null) => {
+      if (isSettled) {
+        return;
+      }
+
+      isSettled = true;
+      observer.disconnect();
+      window.clearTimeout(timeoutId);
+      resolve(value);
+    };
+
+    timeoutId = window.setTimeout(() => settle(null), timeoutMs);
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      characterData: true,
+    });
+  });
 }

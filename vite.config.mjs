@@ -9,6 +9,7 @@ export default defineConfig({
     build: {
         outDir: 'dist',
         sourcemap: true,
+        minify: false,
         rollupOptions: {
             input: {
                 popup: resolve(__dirname, 'src/popup/popup.ts'),
