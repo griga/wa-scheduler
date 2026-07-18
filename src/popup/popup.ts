@@ -1,22 +1,28 @@
 import type { RuntimeRequest, RuntimeResponse, SchedulerStatus } from "../shared/types";
+import { queryRequiredElements } from "../shared/dom.utils";
 
-const form = document.querySelector<HTMLFormElement>("#schedulerForm")!;
-const groupChatNameInput = document.querySelector<HTMLInputElement>("#groupChatName")!;
-const messageTextInput = document.querySelector<HTMLTextAreaElement>("#messageText")!;
-const intervalSecondsInput = document.querySelector<HTMLInputElement>("#intervalSeconds")!;
-const stopButton = document.querySelector<HTMLButtonElement>("#stopBtn")!;
-const statusNode = document.querySelector<HTMLDivElement>("#status")!;
-
-if (
-  !form ||
-  !groupChatNameInput ||
-  !messageTextInput ||
-  !intervalSecondsInput ||
-  !stopButton ||
-  !statusNode
-) {
-  throw new Error("Popup UI is missing expected elements.");
-}
+const {
+  form,
+  groupChatNameInput,
+  messageTextInput,
+  intervalSecondsInput,
+  stopButton,
+  statusNode,
+} = queryRequiredElements({
+  form: "#schedulerForm",
+  groupChatNameInput: "#groupChatName",
+  messageTextInput: "#messageText",
+  intervalSecondsInput: "#intervalSeconds",
+  stopButton: "#stopBtn",
+  statusNode: "#status",
+}) as {
+  form: HTMLFormElement;
+  groupChatNameInput: HTMLInputElement;
+  messageTextInput: HTMLTextAreaElement;
+  intervalSecondsInput: HTMLInputElement;
+  stopButton: HTMLButtonElement;
+  statusNode: HTMLDivElement;
+};
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
