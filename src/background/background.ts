@@ -6,15 +6,15 @@ import type {
   SchedulerInput,
   SchedulerState,
   SchedulerStatus,
-} from "../shared/types";
+} from '../shared/types';
 
-const STORAGE_KEY = "schedulerState";
-const ALARM_NAME = "wa-scheduler-send";
+const STORAGE_KEY = 'schedulerState';
+const ALARM_NAME = 'wa-scheduler-send';
 
 const DEFAULT_STATE: SchedulerState = {
   enabled: false,
-  groupChatName: "",
-  messageText: "",
+  groupChatName: '',
+  messageText: '',
   intervalSeconds: 60,
   nextRunAt: null,
   lastRunAt: null,
@@ -31,29 +31,29 @@ chrome.runtime.onMessage.addListener((message: RuntimeRequest, _sender, sendResp
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name !== ALARM_NAME) return
+  if (alarm.name !== ALARM_NAME) return;
 
   void runScheduledSend();
 });
 
 async function handleRuntimeRequest(message: RuntimeRequest): Promise<RuntimeResponse> {
   switch (message.type) {
-    case "scheduler:get-status":
+    case 'scheduler:get-status':
       return {
         ok: true,
         status: await getStatus(),
       };
 
-    case "scheduler:start":
+    case 'scheduler:start':
       return startScheduler(message.payload);
 
-    case "scheduler:stop":
+    case 'scheduler:stop':
       return stopScheduler();
 
     default:
       return {
         ok: false,
-        error: "Unsupported request.",
+        error: 'Unsupported request.',
         status: await getStatus(),
       };
   }
@@ -69,7 +69,7 @@ async function startScheduler(payload: SchedulerInput): Promise<RuntimeResponse>
   if (!whatsappTab?.id) {
     return {
       ok: false,
-      error: "Open and log into WhatsApp Web in at least one tab first.",
+      error: 'Open and log into WhatsApp Web in at least one tab first.',
       status: await getStatus(),
     };
   }
@@ -94,7 +94,7 @@ async function startScheduler(payload: SchedulerInput): Promise<RuntimeResponse>
     status: await getStatus(),
     note:
       payload.intervalSeconds < 30
-        ? "Small intervals can be delayed by browser throttling."
+        ? 'Small intervals can be delayed by browser throttling.'
         : undefined,
   };
 }
@@ -138,12 +138,12 @@ async function dispatchMessage(state: SchedulerState): Promise<ContentResponse> 
   if (!whatsappTab?.id) {
     return {
       ok: false,
-      error: "WhatsApp Web tab is not open.",
+      error: 'WhatsApp Web tab is not open.',
     };
   }
 
   const request: ContentRequest = {
-    type: "whatsapp:send-message",
+    type: 'whatsapp:send-message',
     payload: {
       groupChatName: state.groupChatName,
       messageText: state.messageText,
@@ -156,34 +156,34 @@ async function dispatchMessage(state: SchedulerState): Promise<ContentResponse> 
       | undefined;
 
     if (!response) {
-      return { ok: false, error: "No response from WhatsApp tab." };
+      return { ok: false, error: 'No response from WhatsApp tab.' };
     }
 
     return response;
   } catch (error) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : "Failed to contact WhatsApp tab.",
+      error: error instanceof Error ? error.message : 'Failed to contact WhatsApp tab.',
     };
   }
 }
 
 async function findWhatsAppTab(): Promise<chrome.tabs.Tab | undefined> {
-  const tabs = await chrome.tabs.query({ url: "https://web.whatsapp.com/*" });
+  const tabs = await chrome.tabs.query({ url: 'https://web.whatsapp.com/*' });
   return tabs.find((tab) => tab.id !== undefined);
 }
 
 function validateSchedulerInput(input: SchedulerInput): string | null {
   if (!input.groupChatName.trim()) {
-    return "groupchatname is required.";
+    return 'groupchatname is required.';
   }
 
   if (!input.messageText.trim()) {
-    return "messagetxt is required.";
+    return 'messagetxt is required.';
   }
 
   if (!Number.isFinite(input.intervalSeconds) || input.intervalSeconds <= 0) {
-    return "intervallinseconds must be greater than zero.";
+    return 'intervallinseconds must be greater than zero.';
   }
 
   return null;
@@ -207,15 +207,15 @@ async function getStoredState(): Promise<SchedulerState> {
 
   return {
     enabled: Boolean(raw.enabled),
-    groupChatName: typeof raw.groupChatName === "string" ? raw.groupChatName : "",
-    messageText: typeof raw.messageText === "string" ? raw.messageText : "",
+    groupChatName: typeof raw.groupChatName === 'string' ? raw.groupChatName : '',
+    messageText: typeof raw.messageText === 'string' ? raw.messageText : '',
     intervalSeconds:
-      typeof raw.intervalSeconds === "number" && Number.isFinite(raw.intervalSeconds)
+      typeof raw.intervalSeconds === 'number' && Number.isFinite(raw.intervalSeconds)
         ? raw.intervalSeconds
         : 60,
-    nextRunAt: typeof raw.nextRunAt === "number" ? raw.nextRunAt : null,
-    lastRunAt: typeof raw.lastRunAt === "number" ? raw.lastRunAt : null,
-    lastError: typeof raw.lastError === "string" ? raw.lastError : null,
+    nextRunAt: typeof raw.nextRunAt === 'number' ? raw.nextRunAt : null,
+    lastRunAt: typeof raw.lastRunAt === 'number' ? raw.lastRunAt : null,
+    lastError: typeof raw.lastError === 'string' ? raw.lastError : null,
   };
 }
 

@@ -16,17 +16,17 @@ export interface SchedulerStatus extends SchedulerState {
 }
 
 export type RuntimeRequest =
-  | { type: "scheduler:get-status" }
-  | { type: "scheduler:start"; payload: SchedulerInput }
-  | { type: "scheduler:stop" };
+  | { type: 'scheduler:get-status' }
+  | { type: 'scheduler:start'; payload: SchedulerInput }
+  | { type: 'scheduler:stop' };
 
 export type RuntimeResponse =
   | { ok: true; status: SchedulerStatus; note?: string }
   | { ok: false; error: string; status: SchedulerStatus };
 
 export type ContentRequest = {
-  type: "whatsapp:send-message";
-  payload: Pick<SchedulerInput, "groupChatName" | "messageText">;
+  type: 'whatsapp:send-message';
+  payload: Pick<SchedulerInput, 'groupChatName' | 'messageText'>;
 };
 
 export type ContentResponse = { ok: true } | { ok: false; error: string };
