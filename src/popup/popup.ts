@@ -11,6 +11,8 @@ const {
   groupChatNameInput,
   messageTextInput,
   scheduleTimesInput,
+  startButton,
+  updateButton,
   stopButton,
   statusNode,
   chatsButtonSelectorInput,
@@ -26,6 +28,8 @@ const {
   groupChatNameInput: '#groupChatName',
   messageTextInput: '#messageText',
   scheduleTimesInput: '#scheduleTimes',
+  startButton: '#startBtn',
+  updateButton: '#updateBtn',
   stopButton: '#stopBtn',
   statusNode: '#status',
   chatsButtonSelectorInput: '#selectorChatsButton',
@@ -41,6 +45,8 @@ const {
   groupChatNameInput: HTMLInputElement;
   messageTextInput: HTMLTextAreaElement;
   scheduleTimesInput: HTMLInputElement;
+  startButton: HTMLButtonElement;
+  updateButton: HTMLButtonElement;
   stopButton: HTMLButtonElement;
   statusNode: HTMLDivElement;
   chatsButtonSelectorInput: HTMLInputElement;
@@ -55,12 +61,30 @@ const {
 
 form.addEventListener('submit', (event) => {
   event.preventDefault();
+
+  const action = getSubmitAction();
+  if (!action) {
+    return;
+  }
+
   void startScheduler();
 });
 
 stopButton.addEventListener('click', () => {
   void stopScheduler();
 });
+
+form.addEventListener('input', () => {
+  updateActionButtons();
+});
+
+form.addEventListener('change', () => {
+  updateActionButtons();
+});
+
+let latestStatus: SchedulerStatus | null = null;
+
+updateActionButtons();
 
 void refreshStatus();
 
@@ -117,10 +141,13 @@ async function sendRuntimeMessage(request: RuntimeRequest): Promise<RuntimeRespo
 
 function renderResponse(response: RuntimeResponse): void {
   const { status } = response;
+  latestStatus = status;
+
   groupChatNameInput.value = status.groupChatName;
   messageTextInput.value = status.messageText;
   scheduleTimesInput.value = status.scheduleTimes.join(' ');
   applySelectorsToForm(status.extensionConfig.whatsappSelectors);
+  updateActionButtons();
 
   const rows = [
     response.ok ? 'Scheduler: OK' : `Scheduler error: ${response.error}`,
@@ -144,6 +171,132 @@ function renderResponse(response: RuntimeResponse): void {
 
 function formatTimestamp(timestamp: number | null): string {
   return timestamp ? new Date(timestamp).toLocaleString() : '-';
+}
+
+function getSubmitAction(): 'start' | 'update' | null {
+  const formValid = isFormSemanticallyValid();
+  const running = isSchedulerRunning();
+  const dirty = isFormDirtyComparedToStatus();
+
+  if (!running && formValid) {
+    return 'start';
+  }
+
+  if (running && dirty && formValid) {
+    return 'update';
+  }
+
+  return null;
+}
+
+function updateActionButtons(): void {
+  const formValid = isFormSemanticallyValid();
+  const running = isSchedulerRunning();
+  const dirty = isFormDirtyComparedToStatus();
+
+  const canStart = !running && formValid;
+  const canUpdate = running && dirty && formValid;
+  const canStop = running;
+
+  startButton.hidden = running;
+  startButton.disabled = !canStart;
+
+  updateButton.hidden = !running || !dirty;
+  updateButton.disabled = !canUpdate;
+
+  stopButton.hidden = !canStop;
+  stopButton.disabled = !canStop;
+}
+
+function isSchedulerRunning(): boolean {
+  return latestStatus?.enabled ?? false;
+}
+
+function isFormSemanticallyValid(): boolean {
+  const nativeValid = form.checkValidity();
+  const parsedTimes = parseScheduleTimes(scheduleTimesInput.value);
+
+  if (!parsedTimes.ok) {
+    scheduleTimesInput.setCustomValidity(parsedTimes.error);
+    return false;
+  }
+
+  scheduleTimesInput.setCustomValidity('');
+  return nativeValid;
+}
+
+function isFormDirtyComparedToStatus(): boolean {
+  if (!latestStatus) {
+    return false;
+  }
+
+  const current = buildNormalizedFormSnapshot();
+  if (!current) {
+    return true;
+  }
+
+  const existing = buildNormalizedStatusSnapshot(latestStatus);
+  return !areSnapshotsEqual(current, existing);
+}
+
+type FormSnapshot = {
+  groupChatName: string;
+  messageText: string;
+  scheduleTimes: string[];
+  selectors: WhatsAppSelectors;
+};
+
+function buildNormalizedFormSnapshot(): FormSnapshot | null {
+  const parsedTimes = parseScheduleTimes(scheduleTimesInput.value);
+  if (!parsedTimes.ok) {
+    return null;
+  }
+
+  return {
+    groupChatName: groupChatNameInput.value.trim(),
+    messageText: messageTextInput.value.trim(),
+    scheduleTimes: parsedTimes.times,
+    selectors: getExtensionConfigFromForm().whatsappSelectors,
+  };
+}
+
+function buildNormalizedStatusSnapshot(status: SchedulerStatus): FormSnapshot {
+  return {
+    groupChatName: status.groupChatName.trim(),
+    messageText: status.messageText.trim(),
+    scheduleTimes: [...status.scheduleTimes].sort(compareTimes),
+    selectors: status.extensionConfig.whatsappSelectors,
+  };
+}
+
+function areSnapshotsEqual(a: FormSnapshot, b: FormSnapshot): boolean {
+  return (
+    a.groupChatName === b.groupChatName &&
+    a.messageText === b.messageText &&
+    arrayEquals(a.scheduleTimes, b.scheduleTimes) &&
+    a.selectors.chatsButton === b.selectors.chatsButton &&
+    a.selectors.chatListSearchContainer === b.selectors.chatListSearchContainer &&
+    a.selectors.chatListSearchInput === b.selectors.chatListSearchInput &&
+    a.selectors.searchResultsContainer === b.selectors.searchResultsContainer &&
+    a.selectors.searchNoChatsContainer === b.selectors.searchNoChatsContainer &&
+    a.selectors.searchResultTitleItem === b.selectors.searchResultTitleItem &&
+    a.selectors.composerTextbox === b.selectors.composerTextbox &&
+    a.selectors.sendButton === b.selectors.sendButton
+  );
+}
+
+function arrayEquals(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  for (let index = 0; index < a.length; index += 1) {
+    if (a[index] !== b[index]) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 function emptyStatus(): SchedulerStatus {
