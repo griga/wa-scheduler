@@ -2,7 +2,7 @@ import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 
-const watchedStaticFiles = ['manifest.json'];
+const watchedStaticFiles = ['manifest.json', 'src/popup/popup.css'];
 
 export default defineConfig({
   base: './',
@@ -36,6 +36,7 @@ export default defineConfig({
       targets: [
         { src: 'manifest.json', dest: '.' },
         { src: 'src/popup/popup.html', dest: '.' },
+        { src: 'src/popup/popup.css', dest: '.' },
         { src: 'src/img/*', dest: 'img' },
       ],
     }),
