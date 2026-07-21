@@ -21,22 +21,21 @@ const DEFAULT_STATE: SchedulerState = {
   lastError: null,
 };
 
-chrome.runtime.onInstalled.addListener(() => {
-  void ensureStoredState();
-});
+chrome.runtime.onInstalled.addListener(() => ensureStoredState());
 
 chrome.runtime.onMessage.addListener((message: RuntimeRequest, _sender, sendResponse) => {
-  void handleRuntimeRequest(message).then(sendResponse);
+  handleRuntimeRequest(message).then(sendResponse);
   return true;
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== ALARM_NAME) return;
-
-  void runScheduledSend();
+  runScheduledSend();
 });
 
 async function handleRuntimeRequest(message: RuntimeRequest): Promise<RuntimeResponse> {
+  console.log('Received runtime request:', message);
+
   switch (message.type) {
     case 'scheduler:get-status':
       return {
@@ -60,9 +59,10 @@ async function handleRuntimeRequest(message: RuntimeRequest): Promise<RuntimeRes
 }
 
 async function startScheduler(payload: SchedulerInput): Promise<RuntimeResponse> {
-  const validationError = validateSchedulerInput(payload);
-  if (validationError) {
-    return { ok: false, error: validationError, status: await getStatus() };
+  try {
+    validateSchedulerInput(payload);
+  } catch (e) {
+    return { ok: false, error: (<Error>e).message, status: await getStatus() };
   }
 
   const whatsappTab = await findWhatsAppTab();
@@ -121,6 +121,7 @@ async function runScheduledSend(): Promise<void> {
   }
 
   const sendResult = await dispatchMessage(currentState);
+  console.log('Scheduled send result:', sendResult);
   const nextRunAt = Date.now() + currentState.intervalSeconds * 1000;
   const nextState: SchedulerState = {
     ...currentState,
@@ -135,12 +136,7 @@ async function runScheduledSend(): Promise<void> {
 
 async function dispatchMessage(state: SchedulerState): Promise<ContentResponse> {
   const whatsappTab = await findWhatsAppTab();
-  if (!whatsappTab?.id) {
-    return {
-      ok: false,
-      error: 'WhatsApp Web tab is not open.',
-    };
-  }
+  if (!whatsappTab?.id) return errorResponse('WhatsApp Web tab is not open.');
 
   const request: ContentRequest = {
     type: 'whatsapp:send-message',
@@ -151,49 +147,34 @@ async function dispatchMessage(state: SchedulerState): Promise<ContentResponse> 
   };
 
   try {
-    const response = (await chrome.tabs.sendMessage(whatsappTab.id, request)) as
-      | ContentResponse
-      | undefined;
-
-    if (!response) {
-      return { ok: false, error: 'No response from WhatsApp tab.' };
-    }
-
+    const response = await chrome.tabs.sendMessage(whatsappTab.id, request);
+    if (!response) return errorResponse('No response from WhatsApp tab.');
     return response;
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : 'Failed to contact WhatsApp tab.',
-    };
+    const msg = error instanceof Error ? error.message : 'Failed to contact WhatsApp tab.';
+    return errorResponse(msg);
   }
 }
 
 async function findWhatsAppTab(): Promise<chrome.tabs.Tab | undefined> {
   const tabs = await chrome.tabs.query({ url: 'https://web.whatsapp.com/*' });
-  return tabs.find((tab) => tab.id !== undefined);
+  const found = tabs.find((tab) => tab.id !== undefined);
+  console.log('Found WhatsApp tabs:', found);
+  return found;
 }
 
-function validateSchedulerInput(input: SchedulerInput): string | null {
-  if (!input.groupChatName.trim()) {
-    return 'groupchatname is required.';
-  }
-
-  if (!input.messageText.trim()) {
-    return 'messagetxt is required.';
-  }
-
-  if (!Number.isFinite(input.intervalSeconds) || input.intervalSeconds <= 0) {
-    return 'intervallinseconds must be greater than zero.';
-  }
-
-  return null;
+function validateSchedulerInput(input: SchedulerInput): void {
+  invariant(input.groupChatName.trim(), 'groupchatname is required.');
+  invariant(input.messageText.trim(), 'messagetxt is required.');
+  invariant(
+    Number.isFinite(input.intervalSeconds) && input.intervalSeconds > 0,
+    'intervallinseconds must be greater than zero.',
+  );
 }
 
 async function ensureStoredState(): Promise<void> {
   const result = await chrome.storage.local.get(STORAGE_KEY);
-  if (result[STORAGE_KEY]) {
-    return;
-  }
+  if (result[STORAGE_KEY]) return;
 
   await saveState(DEFAULT_STATE);
 }
@@ -229,4 +210,18 @@ async function getStatus(): Promise<SchedulerStatus> {
     ...state,
     whatsappTabOpen: Boolean(whatsappTab?.id),
   };
+}
+
+//
+//
+//
+//
+// utils
+
+function errorResponse(error: string): ContentResponse {
+  return { ok: false, error };
+}
+
+function invariant(value: boolean | string, message: string): void {
+  if (!value) throw new Error(message);
 }
