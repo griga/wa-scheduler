@@ -15,7 +15,7 @@ const DEFAULT_STATE: SchedulerState = {
   enabled: false,
   groupChatName: '',
   messageText: '',
-  intervalSeconds: 60,
+  scheduleTimes: [],
   nextRunAt: null,
   lastRunAt: null,
   lastError: null,
@@ -65,21 +65,13 @@ async function startScheduler(payload: SchedulerInput): Promise<RuntimeResponse>
     return { ok: false, error: (<Error>e).message, status: await getStatus() };
   }
 
-  const whatsappTab = await findWhatsAppTab();
-  if (!whatsappTab?.id) {
-    return {
-      ok: false,
-      error: 'Open and log into WhatsApp Web in at least one tab first.',
-      status: await getStatus(),
-    };
-  }
-
-  const nextRunAt = Date.now() + payload.intervalSeconds * 1000;
+  const scheduleTimes = normalizeAndSortScheduleTimes(payload.scheduleTimes);
+  const nextRunAt = getNextRunTimestamp(scheduleTimes, Date.now());
   const nextState: SchedulerState = {
     enabled: true,
     groupChatName: payload.groupChatName.trim(),
     messageText: payload.messageText.trim(),
-    intervalSeconds: payload.intervalSeconds,
+    scheduleTimes,
     nextRunAt,
     lastRunAt: null,
     lastError: null,
@@ -92,10 +84,6 @@ async function startScheduler(payload: SchedulerInput): Promise<RuntimeResponse>
   return {
     ok: true,
     status: await getStatus(),
-    note:
-      payload.intervalSeconds < 30
-        ? 'Small intervals can be delayed by browser throttling.'
-        : undefined,
   };
 }
 
@@ -115,18 +103,19 @@ async function stopScheduler(): Promise<RuntimeResponse> {
 
 async function runScheduledSend(): Promise<void> {
   const currentState = await getStoredState();
-  if (!currentState.enabled) {
+  if (!currentState.enabled || currentState.scheduleTimes.length === 0) {
     await chrome.alarms.clear(ALARM_NAME);
     return;
   }
 
   const sendResult = await dispatchMessage(currentState);
   console.log('Scheduled send result:', sendResult);
-  const nextRunAt = Date.now() + currentState.intervalSeconds * 1000;
+  const now = Date.now();
+  const nextRunAt = getNextRunTimestamp(currentState.scheduleTimes, now);
   const nextState: SchedulerState = {
     ...currentState,
     nextRunAt,
-    lastRunAt: Date.now(),
+    lastRunAt: now,
     lastError: sendResult.ok ? null : sendResult.error,
   };
 
@@ -136,7 +125,7 @@ async function runScheduledSend(): Promise<void> {
 
 async function dispatchMessage(state: SchedulerState): Promise<ContentResponse> {
   const whatsappTab = await findWhatsAppTab();
-  if (!whatsappTab?.id) return errorResponse('WhatsApp Web tab is not open.');
+  if (!whatsappTab?.id) return errorResponse('WhatsApp Web tab is not open. Skipped this alarm.');
 
   const request: ContentRequest = {
     type: 'whatsapp:send-message',
@@ -166,10 +155,10 @@ async function findWhatsAppTab(): Promise<chrome.tabs.Tab | undefined> {
 function validateSchedulerInput(input: SchedulerInput): void {
   invariant(input.groupChatName.trim(), 'groupchatname is required.');
   invariant(input.messageText.trim(), 'messagetxt is required.');
-  invariant(
-    Number.isFinite(input.intervalSeconds) && input.intervalSeconds > 0,
-    'intervallinseconds must be greater than zero.',
-  );
+  invariant(Array.isArray(input.scheduleTimes) && input.scheduleTimes.length > 0, 'scheduletimes is required.');
+  for (const scheduleTime of input.scheduleTimes) {
+    invariant(isValidTimeToken(scheduleTime), `Invalid schedule time: ${scheduleTime}`);
+  }
 }
 
 async function ensureStoredState(): Promise<void> {
@@ -186,14 +175,16 @@ async function getStoredState(): Promise<SchedulerState> {
     return DEFAULT_STATE;
   }
 
+  const rawScheduleTimes = Array.isArray(raw.scheduleTimes)
+    ? raw.scheduleTimes.filter((value): value is string => typeof value === 'string')
+    : [];
+  const scheduleTimes = normalizeAndSortScheduleTimes(rawScheduleTimes);
+
   return {
     enabled: Boolean(raw.enabled),
     groupChatName: typeof raw.groupChatName === 'string' ? raw.groupChatName : '',
     messageText: typeof raw.messageText === 'string' ? raw.messageText : '',
-    intervalSeconds:
-      typeof raw.intervalSeconds === 'number' && Number.isFinite(raw.intervalSeconds)
-        ? raw.intervalSeconds
-        : 60,
+    scheduleTimes,
     nextRunAt: typeof raw.nextRunAt === 'number' ? raw.nextRunAt : null,
     lastRunAt: typeof raw.lastRunAt === 'number' ? raw.lastRunAt : null,
     lastError: typeof raw.lastError === 'string' ? raw.lastError : null,
@@ -224,4 +215,70 @@ function errorResponse(error: string): ContentResponse {
 
 function invariant(value: boolean | string, message: string): void {
   if (!value) throw new Error(message);
+}
+
+function normalizeAndSortScheduleTimes(scheduleTimes: string[]): string[] {
+  const unique = new Set<string>();
+
+  for (const token of scheduleTimes) {
+    if (!isValidTimeToken(token)) continue;
+    const [hoursText, minutesText] = token.split(':');
+    const normalized = `${hoursText.padStart(2, '0')}:${minutesText}`;
+    unique.add(normalized);
+  }
+
+  return Array.from(unique).sort((left, right) => timeToMinutes(left) - timeToMinutes(right));
+}
+
+function isValidTimeToken(time: string): boolean {
+  const match = time.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return false;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  return (
+    Number.isInteger(hours) &&
+    Number.isInteger(minutes) &&
+    hours >= 0 &&
+    hours <= 23 &&
+    minutes >= 0 &&
+    minutes <= 59
+  );
+}
+
+function timeToMinutes(time: string): number {
+  const [hoursText, minutesText] = time.split(':');
+  return Number(hoursText) * 60 + Number(minutesText);
+}
+
+function getNextRunTimestamp(scheduleTimes: string[], nowMs: number): number {
+  if (scheduleTimes.length === 0) {
+    return nowMs;
+  }
+
+  const now = new Date(nowMs);
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentSeconds = now.getSeconds();
+  const currentMilliseconds = now.getMilliseconds();
+
+  for (const scheduleTime of scheduleTimes) {
+    const totalMinutes = timeToMinutes(scheduleTime);
+    if (
+      totalMinutes > currentMinutes ||
+      (totalMinutes === currentMinutes && currentSeconds === 0 && currentMilliseconds === 0)
+    ) {
+      const next = new Date(nowMs);
+      next.setHours(Math.floor(totalMinutes / 60), totalMinutes % 60, 0, 0);
+      if (next.getTime() >= nowMs) {
+        return next.getTime();
+      }
+    }
+  }
+
+  const first = scheduleTimes[0];
+  const firstMinutes = timeToMinutes(first);
+  const nextDay = new Date(nowMs);
+  nextDay.setDate(nextDay.getDate() + 1);
+  nextDay.setHours(Math.floor(firstMinutes / 60), firstMinutes % 60, 0, 0);
+  return nextDay.getTime();
 }

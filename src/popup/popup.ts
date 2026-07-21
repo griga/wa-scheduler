@@ -1,18 +1,18 @@
 import type { RuntimeRequest, RuntimeResponse, SchedulerStatus } from '../shared/types';
 
-const { form, groupChatNameInput, messageTextInput, intervalSecondsInput, stopButton, statusNode } =
+const { form, groupChatNameInput, messageTextInput, scheduleTimesInput, stopButton, statusNode } =
   queryRequiredElements({
     form: '#schedulerForm',
     groupChatNameInput: '#groupChatName',
     messageTextInput: '#messageText',
-    intervalSecondsInput: '#intervalSeconds',
+    scheduleTimesInput: '#scheduleTimes',
     stopButton: '#stopBtn',
     statusNode: '#status',
   }) as {
     form: HTMLFormElement;
     groupChatNameInput: HTMLInputElement;
     messageTextInput: HTMLTextAreaElement;
-    intervalSecondsInput: HTMLInputElement;
+    scheduleTimesInput: HTMLInputElement;
     stopButton: HTMLButtonElement;
     statusNode: HTMLDivElement;
   };
@@ -29,9 +29,9 @@ stopButton.addEventListener('click', () => {
 void refreshStatus();
 
 async function startScheduler(): Promise<void> {
-  const intervalValue = Number(intervalSecondsInput.value);
-  if (!Number.isFinite(intervalValue) || intervalValue <= 0) {
-    statusNode.textContent = 'intervallinseconds must be greater than zero.';
+  const parsedTimes = parseScheduleTimes(scheduleTimesInput.value);
+  if (!parsedTimes.ok) {
+    statusNode.textContent = parsedTimes.error;
     return;
   }
 
@@ -40,7 +40,7 @@ async function startScheduler(): Promise<void> {
     payload: {
       groupChatName: groupChatNameInput.value,
       messageText: messageTextInput.value,
-      intervalSeconds: intervalValue,
+      scheduleTimes: parsedTimes.times,
     },
   });
 
@@ -82,12 +82,13 @@ function renderResponse(response: RuntimeResponse): void {
   const { status } = response;
   groupChatNameInput.value = status.groupChatName;
   messageTextInput.value = status.messageText;
-  intervalSecondsInput.value = String(status.intervalSeconds);
+  scheduleTimesInput.value = status.scheduleTimes.join(' ');
 
   const rows = [
     response.ok ? 'Scheduler: OK' : `Scheduler error: ${response.error}`,
     status.enabled ? 'State: running' : 'State: stopped',
     `WhatsApp tab: ${status.whatsappTabOpen ? 'open' : 'missing'}`,
+    `Schedule: ${status.scheduleTimes.join(' ') || '-'}`,
     `Next run: ${formatTimestamp(status.nextRunAt)}`,
     `Last run: ${formatTimestamp(status.lastRunAt)}`,
   ];
@@ -112,12 +113,76 @@ function emptyStatus(): SchedulerStatus {
     enabled: false,
     groupChatName: 'm22',
     messageText: Math.random().toString(36).substring(2, 8),
-    intervalSeconds: 60,
+    scheduleTimes: [],
     nextRunAt: null,
     lastRunAt: null,
     lastError: null,
     whatsappTabOpen: false,
   };
+}
+
+function parseScheduleTimes(rawInput: string):
+  | { ok: true; times: string[] }
+  | { ok: false; error: string } {
+  const tokens = rawInput
+    .split(/[\s,]+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+
+  if (tokens.length === 0) {
+    return { ok: false, error: 'scheduletimes is required.' };
+  }
+
+  const unique = new Set<string>();
+
+  for (const token of tokens) {
+    const normalized = normalizeTimeToken(token);
+    if (!normalized.ok) {
+      return { ok: false, error: normalized.error };
+    }
+
+    unique.add(normalized.time);
+  }
+
+  const times = Array.from(unique).sort(compareTimes);
+  return { ok: true, times };
+}
+
+function normalizeTimeToken(token: string):
+  | { ok: true; time: string }
+  | { ok: false; error: string } {
+  const match = token.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) {
+    return {
+      ok: false,
+      error: `Invalid time "${token}". Use H:MM or HH:MM (for example 0:19 or 00:19).`,
+    };
+  }
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+
+  if (!Number.isInteger(hours) || hours < 0 || hours > 23) {
+    return { ok: false, error: `Invalid hour in "${token}". Hour must be 0-23.` };
+  }
+
+  if (!Number.isInteger(minutes) || minutes < 0 || minutes > 59) {
+    return { ok: false, error: `Invalid minutes in "${token}". Minutes must be 00-59.` };
+  }
+
+  return {
+    ok: true,
+    time: `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`,
+  };
+}
+
+function compareTimes(a: string, b: string): number {
+  return timeToMinutes(a) - timeToMinutes(b);
+}
+
+function timeToMinutes(time: string): number {
+  const [hoursText, minutesText] = time.split(':');
+  return Number(hoursText) * 60 + Number(minutesText);
 }
 
 function queryRequiredElements<T extends Record<string, string>>(

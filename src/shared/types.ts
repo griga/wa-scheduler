@@ -1,7 +1,7 @@
 export interface SchedulerInput {
   groupChatName: string;
   messageText: string;
-  intervalSeconds: number;
+  scheduleTimes: string[];
 }
 
 export interface SchedulerState extends SchedulerInput {

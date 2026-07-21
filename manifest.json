@@ -7,7 +7,7 @@
   "host_permissions": ["https://web.whatsapp.com/*"],
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "img/hi image.png"
+    "default_icon": "img/logo.png"
   },
   "background": {
     "service_worker": "background.js",

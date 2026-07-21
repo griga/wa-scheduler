@@ -61,8 +61,14 @@
       <label for="messageText">messagetxt</label>
       <textarea id="messageText" name="messageText" required></textarea>
 
-      <label for="intervalSeconds">intervallinseconds</label>
-      <input id="intervalSeconds" name="intervalSeconds" type="number" min="1" required>
+      <label for="scheduleTimes">scheduleTimes</label>
+      <input
+        id="scheduleTimes"
+        name="scheduleTimes"
+        autocomplete="off"
+        placeholder="00:00 02:12 07:00"
+        required
+      >
 
       <div class="actions">
         <button id="startBtn" type="submit">Start</button>
