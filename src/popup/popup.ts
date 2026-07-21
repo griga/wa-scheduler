@@ -44,7 +44,7 @@ const {
   form: HTMLFormElement;
   groupChatNameInput: HTMLInputElement;
   messageTextInput: HTMLTextAreaElement;
-  scheduleTimesInput: HTMLInputElement;
+  scheduleTimesInput: HTMLTextAreaElement;
   startButton: HTMLButtonElement;
   updateButton: HTMLButtonElement;
   stopButton: HTMLButtonElement;
@@ -166,7 +166,9 @@ function renderResponse(response: RuntimeResponse): void {
     rows.push(response.note);
   }
 
-  statusNode.textContent = rows.join('\n');
+  requestAnimationFrame(() => {
+    statusNode.textContent = rows.join('\n');
+  });
 }
 
 function formatTimestamp(timestamp: number | null): string {
@@ -302,8 +304,8 @@ function arrayEquals(a: string[], b: string[]): boolean {
 function emptyStatus(): SchedulerStatus {
   return {
     enabled: false,
-    groupChatName: 'm22',
-    messageText: Math.random().toString(36).substring(2, 8),
+    groupChatName: '',
+    messageText: '',
     scheduleTimes: [],
     extensionConfig: {
       whatsappSelectors: {
