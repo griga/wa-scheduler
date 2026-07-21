@@ -8,7 +8,6 @@ chrome.runtime.onMessage.addListener(
       payload.messageText,
       payload.extensionConfig.whatsappSelectors,
     );
-    console.log('sendMessageToGroup result:', result);
     return sendResponse(result);
   },
 );

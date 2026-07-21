@@ -52,8 +52,6 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 async function handleRuntimeRequest(message: RuntimeRequest): Promise<RuntimeResponse> {
-  console.log('Received runtime request:', message);
-
   switch (message.type) {
     case 'scheduler:get-status':
       return {
@@ -128,7 +126,6 @@ async function runScheduledSend(): Promise<void> {
   }
 
   const sendResult = await dispatchMessage(currentState);
-  console.log('Scheduled send result:', sendResult);
   const now = Date.now();
   const nextRunAt = getNextRunTimestamp(currentState.scheduleTimes, now);
   const nextState: SchedulerState = {
@@ -168,7 +165,6 @@ async function dispatchMessage(state: SchedulerState): Promise<ContentResponse> 
 async function findWhatsAppTab(): Promise<chrome.tabs.Tab | undefined> {
   const tabs = await chrome.tabs.query({ url: 'https://web.whatsapp.com/*' });
   const found = tabs.find((tab) => tab.id !== undefined);
-  console.log('Found WhatsApp tabs:', found);
   return found;
 }
 
