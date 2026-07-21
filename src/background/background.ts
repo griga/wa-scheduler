@@ -1,21 +1,39 @@
 import type {
   ContentRequest,
   ContentResponse,
+  ExtensionConfig,
   RuntimeRequest,
   RuntimeResponse,
   SchedulerInput,
   SchedulerState,
   SchedulerStatus,
+  WhatsAppSelectors,
 } from '../shared/types';
 
 const STORAGE_KEY = 'schedulerState';
 const ALARM_NAME = 'wa-scheduler-send';
+
+const DEFAULT_WHATSAPP_SELECTORS: WhatsAppSelectors = {
+  chatsButton: "[aria-label='Chats']",
+  chatListSearchContainer: "[data-testid='chat-list-search-container']",
+  chatListSearchInput: "[data-testid='chat-list-search-container'] [role='textbox']",
+  searchResultsContainer: "[aria-label^='Search results'][aria-rowcount='1']",
+  searchNoChatsContainer: "[data-testid='search-no-chats-or-contacts-container']",
+  searchResultTitleItem: "[data-testid='cell-frame-title']",
+  composerTextbox: '[data-testid=compose-box] [role=textbox]',
+  sendButton: "footer button[aria-label='Send']",
+};
+
+const DEFAULT_EXTENSION_CONFIG: ExtensionConfig = {
+  whatsappSelectors: DEFAULT_WHATSAPP_SELECTORS,
+};
 
 const DEFAULT_STATE: SchedulerState = {
   enabled: false,
   groupChatName: '',
   messageText: '',
   scheduleTimes: [],
+  extensionConfig: DEFAULT_EXTENSION_CONFIG,
   nextRunAt: null,
   lastRunAt: null,
   lastError: null,
@@ -72,6 +90,7 @@ async function startScheduler(payload: SchedulerInput): Promise<RuntimeResponse>
     groupChatName: payload.groupChatName.trim(),
     messageText: payload.messageText.trim(),
     scheduleTimes,
+    extensionConfig: normalizeExtensionConfig(payload.extensionConfig),
     nextRunAt,
     lastRunAt: null,
     lastError: null,
@@ -132,6 +151,7 @@ async function dispatchMessage(state: SchedulerState): Promise<ContentResponse> 
     payload: {
       groupChatName: state.groupChatName,
       messageText: state.messageText,
+      extensionConfig: state.extensionConfig,
     },
   };
 
@@ -155,9 +175,22 @@ async function findWhatsAppTab(): Promise<chrome.tabs.Tab | undefined> {
 function validateSchedulerInput(input: SchedulerInput): void {
   invariant(input.groupChatName.trim(), 'groupchatname is required.');
   invariant(input.messageText.trim(), 'messagetxt is required.');
-  invariant(Array.isArray(input.scheduleTimes) && input.scheduleTimes.length > 0, 'scheduletimes is required.');
+  invariant(
+    Array.isArray(input.scheduleTimes) && input.scheduleTimes.length > 0,
+    'scheduletimes is required.',
+  );
   for (const scheduleTime of input.scheduleTimes) {
     invariant(isValidTimeToken(scheduleTime), `Invalid schedule time: ${scheduleTime}`);
+  }
+
+  const selectors = input.extensionConfig.whatsappSelectors;
+  const entries = Object.entries(selectors);
+  invariant(entries.length > 0, 'whatsapp selectors config is missing.');
+  for (const [key, selector] of entries) {
+    invariant(
+      typeof selector === 'string' && selector.trim().length > 0,
+      `Invalid selector: ${key}`,
+    );
   }
 }
 
@@ -179,12 +212,14 @@ async function getStoredState(): Promise<SchedulerState> {
     ? raw.scheduleTimes.filter((value): value is string => typeof value === 'string')
     : [];
   const scheduleTimes = normalizeAndSortScheduleTimes(rawScheduleTimes);
+  const extensionConfig = normalizeExtensionConfig(raw.extensionConfig);
 
   return {
     enabled: Boolean(raw.enabled),
     groupChatName: typeof raw.groupChatName === 'string' ? raw.groupChatName : '',
     messageText: typeof raw.messageText === 'string' ? raw.messageText : '',
     scheduleTimes,
+    extensionConfig,
     nextRunAt: typeof raw.nextRunAt === 'number' ? raw.nextRunAt : null,
     lastRunAt: typeof raw.lastRunAt === 'number' ? raw.lastRunAt : null,
     lastError: typeof raw.lastError === 'string' ? raw.lastError : null,
@@ -228,6 +263,49 @@ function normalizeAndSortScheduleTimes(scheduleTimes: string[]): string[] {
   }
 
   return Array.from(unique).sort((left, right) => timeToMinutes(left) - timeToMinutes(right));
+}
+
+function normalizeExtensionConfig(raw: unknown): ExtensionConfig {
+  const candidate = raw as Partial<ExtensionConfig> | undefined;
+  const selectors = candidate?.whatsappSelectors as Partial<WhatsAppSelectors> | undefined;
+
+  return {
+    whatsappSelectors: {
+      chatsButton: normalizeSelector(
+        selectors?.chatsButton,
+        DEFAULT_WHATSAPP_SELECTORS.chatsButton,
+      ),
+      chatListSearchContainer: normalizeSelector(
+        selectors?.chatListSearchContainer,
+        DEFAULT_WHATSAPP_SELECTORS.chatListSearchContainer,
+      ),
+      chatListSearchInput: normalizeSelector(
+        selectors?.chatListSearchInput,
+        DEFAULT_WHATSAPP_SELECTORS.chatListSearchInput,
+      ),
+      searchResultsContainer: normalizeSelector(
+        selectors?.searchResultsContainer,
+        DEFAULT_WHATSAPP_SELECTORS.searchResultsContainer,
+      ),
+      searchNoChatsContainer: normalizeSelector(
+        selectors?.searchNoChatsContainer,
+        DEFAULT_WHATSAPP_SELECTORS.searchNoChatsContainer,
+      ),
+      searchResultTitleItem: normalizeSelector(
+        selectors?.searchResultTitleItem,
+        DEFAULT_WHATSAPP_SELECTORS.searchResultTitleItem,
+      ),
+      composerTextbox: normalizeSelector(
+        selectors?.composerTextbox,
+        DEFAULT_WHATSAPP_SELECTORS.composerTextbox,
+      ),
+      sendButton: normalizeSelector(selectors?.sendButton, DEFAULT_WHATSAPP_SELECTORS.sendButton),
+    },
+  };
+}
+
+function normalizeSelector(value: unknown, fallback: string): string {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
 }
 
 function isValidTimeToken(time: string): boolean {

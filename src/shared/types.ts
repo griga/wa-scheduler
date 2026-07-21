@@ -1,7 +1,23 @@
+export interface WhatsAppSelectors {
+  chatsButton: string;
+  chatListSearchContainer: string;
+  chatListSearchInput: string;
+  searchResultsContainer: string;
+  searchNoChatsContainer: string;
+  searchResultTitleItem: string;
+  composerTextbox: string;
+  sendButton: string;
+}
+
+export interface ExtensionConfig {
+  whatsappSelectors: WhatsAppSelectors;
+}
+
 export interface SchedulerInput {
   groupChatName: string;
   messageText: string;
   scheduleTimes: string[];
+  extensionConfig: ExtensionConfig;
 }
 
 export interface SchedulerState extends SchedulerInput {
@@ -26,7 +42,7 @@ export type RuntimeResponse =
 
 export type ContentRequest = {
   type: 'whatsapp:send-message';
-  payload: Pick<SchedulerInput, 'groupChatName' | 'messageText'>;
+  payload: Pick<SchedulerInput, 'groupChatName' | 'messageText' | 'extensionConfig'>;
 };
 
 export type ContentResponse = { ok: true } | { ok: false; error: string };

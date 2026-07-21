@@ -19,6 +19,26 @@
       gap: 8px;
     }
 
+    details {
+      border: 1px solid #d0d4de;
+      border-radius: 8px;
+      padding: 8px;
+      background: #f7f9fc;
+    }
+
+    summary {
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .advanced-note {
+      margin: 6px 0;
+      color: #505b70;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
     label {
       font-size: 12px;
       font-weight: 700;
@@ -67,13 +87,68 @@
         name="scheduleTimes"
         autocomplete="off"
         placeholder="00:00 02:12 07:00"
-        required
-      >
+        required>
 
       <div class="actions">
         <button id="startBtn" type="submit">Start</button>
         <button id="stopBtn" type="button">Stop</button>
       </div>
+
+      <details>
+        <summary>Advanced: WhatsApp Selectors</summary>
+        <p class="advanced-note">
+          Keep these defaults unless WhatsApp Web changes. This section is for extension-level
+          troubleshooting.
+        </p>
+
+        <label for="selectorChatsButton">Chats button selector</label>
+        <input id="selectorChatsButton" name="selectorChatsButton" autocomplete="off" required>
+
+        <label for="selectorChatListSearchContainer">Chat list search container selector</label>
+        <input
+          id="selectorChatListSearchContainer"
+          name="selectorChatListSearchContainer"
+          autocomplete="off"
+          required>
+
+        <label for="selectorChatListSearchInput">Chat list search input selector</label>
+        <input
+          id="selectorChatListSearchInput"
+          name="selectorChatListSearchInput"
+          autocomplete="off"
+          required>
+
+        <label for="selectorSearchResultsContainer">Search results container selector</label>
+        <input
+          id="selectorSearchResultsContainer"
+          name="selectorSearchResultsContainer"
+          autocomplete="off"
+          required>
+
+        <label for="selectorSearchNoChatsContainer">Search empty-state selector</label>
+        <input
+          id="selectorSearchNoChatsContainer"
+          name="selectorSearchNoChatsContainer"
+          autocomplete="off"
+          required>
+
+        <label for="selectorSearchResultTitleItem">Search result title item selector</label>
+        <input
+          id="selectorSearchResultTitleItem"
+          name="selectorSearchResultTitleItem"
+          autocomplete="off"
+          required>
+
+        <label for="selectorComposerTextbox">Message composer selector</label>
+        <input
+          id="selectorComposerTextbox"
+          name="selectorComposerTextbox"
+          autocomplete="off"
+          required>
+
+        <label for="selectorSendButton">Send button selector</label>
+        <input id="selectorSendButton" name="selectorSendButton" autocomplete="off" required>
+      </details>
     </form>
 
     <div id="status" class="status">Loading…</div>

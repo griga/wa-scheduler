@@ -1,21 +1,57 @@
-import type { RuntimeRequest, RuntimeResponse, SchedulerStatus } from '../shared/types';
+import type {
+  ExtensionConfig,
+  RuntimeRequest,
+  RuntimeResponse,
+  SchedulerStatus,
+  WhatsAppSelectors,
+} from '../shared/types';
 
-const { form, groupChatNameInput, messageTextInput, scheduleTimesInput, stopButton, statusNode } =
-  queryRequiredElements({
-    form: '#schedulerForm',
-    groupChatNameInput: '#groupChatName',
-    messageTextInput: '#messageText',
-    scheduleTimesInput: '#scheduleTimes',
-    stopButton: '#stopBtn',
-    statusNode: '#status',
-  }) as {
-    form: HTMLFormElement;
-    groupChatNameInput: HTMLInputElement;
-    messageTextInput: HTMLTextAreaElement;
-    scheduleTimesInput: HTMLInputElement;
-    stopButton: HTMLButtonElement;
-    statusNode: HTMLDivElement;
-  };
+const {
+  form,
+  groupChatNameInput,
+  messageTextInput,
+  scheduleTimesInput,
+  stopButton,
+  statusNode,
+  chatsButtonSelectorInput,
+  chatListSearchContainerSelectorInput,
+  chatListSearchInputSelectorInput,
+  searchResultsContainerSelectorInput,
+  searchNoChatsContainerSelectorInput,
+  searchResultTitleItemSelectorInput,
+  composerTextboxSelectorInput,
+  sendButtonSelectorInput,
+} = queryRequiredElements({
+  form: '#schedulerForm',
+  groupChatNameInput: '#groupChatName',
+  messageTextInput: '#messageText',
+  scheduleTimesInput: '#scheduleTimes',
+  stopButton: '#stopBtn',
+  statusNode: '#status',
+  chatsButtonSelectorInput: '#selectorChatsButton',
+  chatListSearchContainerSelectorInput: '#selectorChatListSearchContainer',
+  chatListSearchInputSelectorInput: '#selectorChatListSearchInput',
+  searchResultsContainerSelectorInput: '#selectorSearchResultsContainer',
+  searchNoChatsContainerSelectorInput: '#selectorSearchNoChatsContainer',
+  searchResultTitleItemSelectorInput: '#selectorSearchResultTitleItem',
+  composerTextboxSelectorInput: '#selectorComposerTextbox',
+  sendButtonSelectorInput: '#selectorSendButton',
+}) as {
+  form: HTMLFormElement;
+  groupChatNameInput: HTMLInputElement;
+  messageTextInput: HTMLTextAreaElement;
+  scheduleTimesInput: HTMLInputElement;
+  stopButton: HTMLButtonElement;
+  statusNode: HTMLDivElement;
+  chatsButtonSelectorInput: HTMLInputElement;
+  chatListSearchContainerSelectorInput: HTMLInputElement;
+  chatListSearchInputSelectorInput: HTMLInputElement;
+  searchResultsContainerSelectorInput: HTMLInputElement;
+  searchNoChatsContainerSelectorInput: HTMLInputElement;
+  searchResultTitleItemSelectorInput: HTMLInputElement;
+  composerTextboxSelectorInput: HTMLInputElement;
+  sendButtonSelectorInput: HTMLInputElement;
+};
 
 form.addEventListener('submit', (event) => {
   event.preventDefault();
@@ -41,6 +77,7 @@ async function startScheduler(): Promise<void> {
       groupChatName: groupChatNameInput.value,
       messageText: messageTextInput.value,
       scheduleTimes: parsedTimes.times,
+      extensionConfig: getExtensionConfigFromForm(),
     },
   });
 
@@ -83,6 +120,7 @@ function renderResponse(response: RuntimeResponse): void {
   groupChatNameInput.value = status.groupChatName;
   messageTextInput.value = status.messageText;
   scheduleTimesInput.value = status.scheduleTimes.join(' ');
+  applySelectorsToForm(status.extensionConfig.whatsappSelectors);
 
   const rows = [
     response.ok ? 'Scheduler: OK' : `Scheduler error: ${response.error}`,
@@ -114,6 +152,18 @@ function emptyStatus(): SchedulerStatus {
     groupChatName: 'm22',
     messageText: Math.random().toString(36).substring(2, 8),
     scheduleTimes: [],
+    extensionConfig: {
+      whatsappSelectors: {
+        chatsButton: "[aria-label='Chats']",
+        chatListSearchContainer: "[data-testid='chat-list-search-container']",
+        chatListSearchInput: "[data-testid='chat-list-search-container'] [role='textbox']",
+        searchResultsContainer: "[aria-label^='Search results'][aria-rowcount='1']",
+        searchNoChatsContainer: "[data-testid='search-no-chats-or-contacts-container']",
+        searchResultTitleItem: "[data-testid='cell-frame-title']",
+        composerTextbox: '[data-testid=compose-box] [role=textbox]',
+        sendButton: "footer button[aria-label='Send']",
+      },
+    },
     nextRunAt: null,
     lastRunAt: null,
     lastError: null,
@@ -121,9 +171,35 @@ function emptyStatus(): SchedulerStatus {
   };
 }
 
-function parseScheduleTimes(rawInput: string):
-  | { ok: true; times: string[] }
-  | { ok: false; error: string } {
+function getExtensionConfigFromForm(): ExtensionConfig {
+  const selectors: WhatsAppSelectors = {
+    chatsButton: chatsButtonSelectorInput.value,
+    chatListSearchContainer: chatListSearchContainerSelectorInput.value,
+    chatListSearchInput: chatListSearchInputSelectorInput.value,
+    searchResultsContainer: searchResultsContainerSelectorInput.value,
+    searchNoChatsContainer: searchNoChatsContainerSelectorInput.value,
+    searchResultTitleItem: searchResultTitleItemSelectorInput.value,
+    composerTextbox: composerTextboxSelectorInput.value,
+    sendButton: sendButtonSelectorInput.value,
+  };
+
+  return { whatsappSelectors: selectors };
+}
+
+function applySelectorsToForm(selectors: WhatsAppSelectors): void {
+  chatsButtonSelectorInput.value = selectors.chatsButton;
+  chatListSearchContainerSelectorInput.value = selectors.chatListSearchContainer;
+  chatListSearchInputSelectorInput.value = selectors.chatListSearchInput;
+  searchResultsContainerSelectorInput.value = selectors.searchResultsContainer;
+  searchNoChatsContainerSelectorInput.value = selectors.searchNoChatsContainer;
+  searchResultTitleItemSelectorInput.value = selectors.searchResultTitleItem;
+  composerTextboxSelectorInput.value = selectors.composerTextbox;
+  sendButtonSelectorInput.value = selectors.sendButton;
+}
+
+function parseScheduleTimes(
+  rawInput: string,
+): { ok: true; times: string[] } | { ok: false; error: string } {
   const tokens = rawInput
     .split(/[\s,]+/)
     .map((token) => token.trim())
@@ -148,9 +224,9 @@ function parseScheduleTimes(rawInput: string):
   return { ok: true, times };
 }
 
-function normalizeTimeToken(token: string):
-  | { ok: true; time: string }
-  | { ok: false; error: string } {
+function normalizeTimeToken(
+  token: string,
+): { ok: true; time: string } | { ok: false; error: string } {
   const match = token.match(/^(\d{1,2}):(\d{2})$/);
   if (!match) {
     return {

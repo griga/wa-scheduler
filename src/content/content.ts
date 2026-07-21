@@ -1,9 +1,13 @@
-import type { ContentRequest, ContentResponse } from '../shared/types';
+import type { ContentRequest, ContentResponse, WhatsAppSelectors } from '../shared/types';
 
 chrome.runtime.onMessage.addListener(
   async ({ payload, type }: ContentRequest, _sender, sendResponse) => {
     if (type !== 'whatsapp:send-message') return;
-    const result = await sendMessageToGroup(payload.groupChatName, payload.messageText);
+    const result = await sendMessageToGroup(
+      payload.groupChatName,
+      payload.messageText,
+      payload.extensionConfig.whatsappSelectors,
+    );
     console.log('sendMessageToGroup result:', result);
     return sendResponse(result);
   },
@@ -12,19 +16,18 @@ chrome.runtime.onMessage.addListener(
 async function sendMessageToGroup(
   groupChatName: string,
   messageText: string,
+  selectors: WhatsAppSelectors,
 ): Promise<ContentResponse> {
-  const chatsBtn = await waitForElement("[aria-label='Chats']");
+  const chatsBtn = await waitForElement(selectors.chatsButton);
   if (!chatsBtn) return errorResponse('WhatsApp Web is not ready yet.');
   chatsBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
   await waitReactRerender();
   await wait(100);
 
-  const chatListSearch = await waitForElement("[data-testid='chat-list-search-container']");
+  const chatListSearch = await waitForElement(selectors.chatListSearchContainer);
   if (!chatListSearch) return errorResponse('WhatsApp Web chat list is not ready yet.');
 
-  const searchBox = await waitForElement<HTMLInputElement>(
-    "[data-testid='chat-list-search-container'] [role='textbox']",
-  );
+  const searchBox = await waitForElement<HTMLInputElement>(selectors.chatListSearchInput);
   if (!searchBox) return errorResponse('Search box not found');
   setReactInputValue(searchBox, groupChatName);
 
@@ -32,15 +35,15 @@ async function sendMessageToGroup(
   await wait(100);
 
   const results = await Promise.race([
-    waitForElement("[aria-label^='Search results'][aria-rowcount='1']"),
-    waitForElement("[data-testid='search-no-chats-or-contacts-container']"),
+    waitForElement(selectors.searchResultsContainer),
+    waitForElement(selectors.searchNoChatsContainer),
   ]);
-  if (results.dataset.testid === 'search-no-chats-or-contacts-container')
+  if (results.matches(selectors.searchNoChatsContainer))
     return errorResponse('Group chat not found');
 
   const groupTitle = findElementByTextContent<HTMLElement>(
     results,
-    "[data-testid='cell-frame-title']",
+    selectors.searchResultTitleItem,
     groupChatName,
   );
   if (!groupTitle) return errorResponse('Group chat not found');
@@ -49,11 +52,11 @@ async function sendMessageToGroup(
   await waitReactRerender();
   await wait(100);
 
-  const composer = await waitForElement('[data-testid=compose-box] [role=textbox]');
+  const composer = await waitForElement(selectors.composerTextbox);
   if (!composer) return errorResponse('Message composer is not available.');
   setReactContentEditableValue(composer, messageText);
 
-  const sendBtn = await waitForElement("footer button[aria-label='Send']");
+  const sendBtn = await waitForElement(selectors.sendButton);
   if (!sendBtn) return errorResponse('Send button is not available.');
   sendBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
 
