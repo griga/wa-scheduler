@@ -12,6 +12,7 @@ import type {
 
 const STORAGE_KEY = 'schedulerState';
 const ALARM_NAME = 'wa-scheduler-send';
+const ALARM_FRESHNESS_WINDOW_MS = 60 * 1000;
 
 const DEFAULT_WHATSAPP_SELECTORS: WhatsAppSelectors = {
   chatsButton: "[aria-label='Chats']",
@@ -48,7 +49,7 @@ chrome.runtime.onMessage.addListener((message: RuntimeRequest, _sender, sendResp
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== ALARM_NAME) return;
-  runScheduledSend();
+  runScheduledSend(alarm);
 });
 
 async function handleRuntimeRequest(message: RuntimeRequest): Promise<RuntimeResponse> {
@@ -118,15 +119,32 @@ async function stopScheduler(): Promise<RuntimeResponse> {
   return { ok: true, status: await getStatus() };
 }
 
-async function runScheduledSend(): Promise<void> {
+async function runScheduledSend(alarm: chrome.alarms.Alarm): Promise<void> {
   const currentState = await getStoredState();
   if (!currentState.enabled || currentState.scheduleTimes.length === 0) {
     await chrome.alarms.clear(ALARM_NAME);
     return;
   }
 
-  const sendResult = await dispatchMessage(currentState);
   const now = Date.now();
+  const isStaleAlarm =
+    typeof alarm.scheduledTime === 'number' &&
+    now - alarm.scheduledTime > ALARM_FRESHNESS_WINDOW_MS;
+
+  if (isStaleAlarm) {
+    const nextRunAt = getNextRunTimestamp(currentState.scheduleTimes, now);
+    const nextState: SchedulerState = {
+      ...currentState,
+      nextRunAt,
+      lastError: null,
+    };
+
+    await saveState(nextState);
+    await chrome.alarms.create(ALARM_NAME, { when: nextRunAt });
+    return;
+  }
+
+  const sendResult = await dispatchMessage(currentState);
   const nextRunAt = getNextRunTimestamp(currentState.scheduleTimes, now);
   const nextState: SchedulerState = {
     ...currentState,
