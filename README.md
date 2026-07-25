@@ -12,6 +12,14 @@ A Chrome Extension (Manifest V3) that sends recurring messages to a WhatsApp Web
 - Survives service-worker lifecycle restarts using `chrome.alarms`
 - Configurable DOM selectors in case WhatsApp Web's markup changes
 
+## Installation
+
+1. Download [`extension.zip`](https://github.com/griga/wa-scheduler/releases/latest/download/extension.zip) from the latest release.
+2. Unzip the file on your computer.
+3. Open Chrome and navigate to `chrome://extensions/`.
+4. Enable **Developer mode** (toggle in the top-right corner).
+5. Click **Load unpacked** and select the unzipped `extension` folder.
+
 ## How it works
 
 ```
@@ -23,7 +31,7 @@ Popup → background service worker → content script → WhatsApp Web DOM
 3. On each alarm, the background finds the active WhatsApp Web tab and dispatches a `whatsapp:send-message` message to the **content script**.
 4. **Content script** automates the WhatsApp Web UI: navigates to the group, types the message, and clicks Send.
 
-## Requirements
+## Dev Requirements
 
 - Google Chrome (or any Chromium-based browser)
 - [Node.js](https://nodejs.org) ≥ 18 and [pnpm](https://pnpm.io)
