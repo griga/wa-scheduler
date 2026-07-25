@@ -15,14 +15,14 @@ const ALARM_NAME = 'wa-scheduler-send';
 const ALARM_FRESHNESS_WINDOW_MS = 60 * 1000;
 
 const DEFAULT_WHATSAPP_SELECTORS: WhatsAppSelectors = {
-  chatsButton: "[aria-label='Chats']",
+  chatsButton: "[data-navbar-item-index='0']",
   chatListSearchContainer: "[data-testid='chat-list-search-container']",
   chatListSearchInput: "[data-testid='chat-list-search-container'] [role='textbox']",
   searchResultsContainer: "[aria-label^='Search results'][aria-rowcount='1']",
   searchNoChatsContainer: "[data-testid='search-no-chats-or-contacts-container']",
   searchResultTitleItem: "[data-testid='cell-frame-title']",
-  composerTextbox: '[data-testid=compose-box] [role=textbox]',
-  sendButton: "footer button[aria-label='Send']",
+  composerTextbox: "[data-testid='compose-box'] [role='textbox']",
+  sendButton: "footer button:has([data-testid='wds-ic-send-filled'])",
 };
 
 const DEFAULT_EXTENSION_CONFIG: ExtensionConfig = {
