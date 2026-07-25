@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   build-and-release:
@@ -15,24 +16,35 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 1. Install pnpm first
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      # 2. Setup Node with pnpm caching
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: 'pnpm'
 
+      # 3. Install dependencies using pnpm
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
+      # 4. Build project
       - name: Build project
-        run: npm run build
+        run: pnpm run build
 
+      # 5. Zip distribution
       - name: Zip distribution
         run: |
           cd dist
           zip -r ../extension.zip .
           cd ..
 
+      # 6. Create Release
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
