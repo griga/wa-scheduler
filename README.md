@@ -14,11 +14,11 @@ A Chrome Extension (Manifest V3) that sends recurring messages to a WhatsApp Web
 
 ## Installation
 
-1. Download [`extension.zip`](https://github.com/griga/wa-scheduler/releases/latest/download/extension.zip) from the latest release.
+1. Download [`wa-scheduler.zip`](https://github.com/griga/wa-scheduler/releases/latest/download/wa-scheduler.zip) from the latest release.
 2. Unzip the file on your computer.
 3. Open Chrome and navigate to `chrome://extensions/`.
 4. Enable **Developer mode** (toggle in the top-right corner).
-5. Click **Load unpacked** and select the unzipped `extension` folder.
+5. Click **Load unpacked** and select the unzipped `wa-scheduler` folder.
 
 ## How it works
 

@@ -18,7 +18,7 @@ const DEFAULT_WHATSAPP_SELECTORS: WhatsAppSelectors = {
   chatsButton: "[data-navbar-item-index='0']",
   chatListSearchContainer: "[data-testid='chat-list-search-container']",
   chatListSearchInput: "[data-testid='chat-list-search-container'] [role='textbox']",
-  searchResultsContainer: "[aria-label^='Search results'][aria-rowcount='1']",
+  searchResultsContainer: "[data-testid='chat-list'] [aria-rowcount='1']",
   searchNoChatsContainer: "[data-testid='search-no-chats-or-contacts-container']",
   searchResultTitleItem: "[data-testid='cell-frame-title']",
   composerTextbox: "[data-testid='compose-box'] [role='textbox']",
