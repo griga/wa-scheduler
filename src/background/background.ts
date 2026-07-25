@@ -276,7 +276,7 @@ function normalizeAndSortScheduleTimes(scheduleTimes: string[]): string[] {
   for (const token of scheduleTimes) {
     if (!isValidTimeToken(token)) continue;
     const [hoursText, minutesText] = token.split(':');
-    const normalized = `${hoursText.padStart(2, '0')}:${minutesText}`;
+    const normalized = `${hoursText.padStart(2, '0')}:${minutesText?.padStart(2, '0') ?? '00'}`;
     unique.add(normalized);
   }
 
@@ -327,11 +327,11 @@ function normalizeSelector(value: unknown, fallback: string): string {
 }
 
 function isValidTimeToken(time: string): boolean {
-  const match = time.match(/^(\d{1,2}):(\d{2})$/);
+  const match = time.match(/^(\d{1,2})(:(\d{2}))?$/);
   if (!match) return false;
 
   const hours = Number(match[1]);
-  const minutes = Number(match[2]);
+  const minutes = Number(match[3]);
   return (
     Number.isInteger(hours) &&
     Number.isInteger(minutes) &&

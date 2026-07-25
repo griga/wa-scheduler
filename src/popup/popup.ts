@@ -389,7 +389,7 @@ function parseScheduleTimes(
 function normalizeTimeToken(
   token: string,
 ): { ok: true; time: string } | { ok: false; error: string } {
-  const match = token.match(/^(\d{1,2}):(\d{2})$/);
+  const match = token.match(/^(\d{1,2})(:(\d{2}))?$/);
   if (!match) {
     return {
       ok: false,
@@ -398,7 +398,7 @@ function normalizeTimeToken(
   }
 
   const hours = Number(match[1]);
-  const minutes = Number(match[2]);
+  const minutes = Number(match[3] ?? 0);
 
   if (!Number.isInteger(hours) || hours < 0 || hours > 23) {
     return { ok: false, error: `Invalid hour in "${token}". Hour must be 0-23.` };
