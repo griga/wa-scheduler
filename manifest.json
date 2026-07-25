@@ -1,7 +1,7 @@
 {
   "name": "WA Scheduled Messages",
   "description": "Schedule repeated WhatsApp group messages from a simple popup.",
-  "version": "1.0",
+  "version": "0.0.1",
   "manifest_version": 3,
   "permissions": ["storage", "alarms", "tabs"],
   "host_permissions": ["https://web.whatsapp.com/*"],

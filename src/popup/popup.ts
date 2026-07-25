@@ -6,6 +6,8 @@ import type {
   WhatsAppSelectors,
 } from '../shared/types';
 
+declare const __APP_VERSION__: string;
+
 const {
   form,
   groupChatNameInput,
@@ -23,6 +25,7 @@ const {
   searchResultTitleItemSelectorInput,
   composerTextboxSelectorInput,
   sendButtonSelectorInput,
+  appVersionNode,
 } = queryRequiredElements({
   form: '#schedulerForm',
   groupChatNameInput: '#groupChatName',
@@ -40,6 +43,7 @@ const {
   searchResultTitleItemSelectorInput: '#selectorSearchResultTitleItem',
   composerTextboxSelectorInput: '#selectorComposerTextbox',
   sendButtonSelectorInput: '#selectorSendButton',
+  appVersionNode: '#appVersion',
 }) as {
   form: HTMLFormElement;
   groupChatNameInput: HTMLInputElement;
@@ -57,7 +61,10 @@ const {
   searchResultTitleItemSelectorInput: HTMLInputElement;
   composerTextboxSelectorInput: HTMLInputElement;
   sendButtonSelectorInput: HTMLInputElement;
+  appVersionNode: HTMLDivElement;
 };
+
+appVersionNode.textContent = `Version ${__APP_VERSION__}`;
 
 form.addEventListener('submit', (event) => {
   event.preventDefault();

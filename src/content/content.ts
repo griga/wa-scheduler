@@ -1,27 +1,45 @@
 import type { ContentRequest, ContentResponse, WhatsAppSelectors } from '../shared/types';
 
-chrome.runtime.onMessage.addListener(
-  async ({ payload, type }: ContentRequest, _sender, sendResponse) => {
-    if (type !== 'whatsapp:send-message') return;
-    const result = await sendMessageToGroup(
-      payload.groupChatName,
-      payload.messageText,
-      payload.extensionConfig.whatsappSelectors,
-    );
-    return sendResponse(result);
-  },
-);
+chrome.runtime.onMessage.addListener(({ payload, type }: ContentRequest, _sender, sendResponse) => {
+  if (type !== 'whatsapp:send-message') return;
+  sendMessageToGroup(
+    payload.groupChatName,
+    payload.messageText,
+    payload.extensionConfig.whatsappSelectors,
+  ).then(sendResponse);
+  return true;
+});
 
 async function sendMessageToGroup(
+  groupChatName: string,
+  messageText: string,
+  selectors: WhatsAppSelectors,
+  retryAttempts = 2,
+): Promise<ContentResponse> {
+  let lastResult: ContentResponse = errorResponse('Unable to send message');
+
+  for (let attempt = 0; attempt <= retryAttempts; attempt += 1) {
+    lastResult = await sendMessageToGroupOnce(groupChatName, messageText, selectors);
+    if (lastResult.ok) return lastResult;
+
+    if (attempt < retryAttempts) {
+      await waitUnthrottled(250);
+    }
+  }
+
+  return lastResult;
+}
+
+async function sendMessageToGroupOnce(
   groupChatName: string,
   messageText: string,
   selectors: WhatsAppSelectors,
 ): Promise<ContentResponse> {
   const chatsBtn = await waitForElement(selectors.chatsButton);
   if (!chatsBtn) return errorResponse('WhatsApp Web is not ready yet.');
-  chatsBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+  chatsBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
   await waitReactRerender();
-  await wait(100);
+  await waitUnthrottled(250);
 
   const chatListSearch = await waitForElement(selectors.chatListSearchContainer);
   if (!chatListSearch) return errorResponse('WhatsApp Web chat list is not ready yet.');
@@ -31,12 +49,14 @@ async function sendMessageToGroup(
   setReactInputValue(searchBox, groupChatName);
 
   await waitReactRerender();
-  await wait(100);
+  await waitUnthrottled(250);
 
   const results = await Promise.race([
     waitForElement(selectors.searchResultsContainer),
     waitForElement(selectors.searchNoChatsContainer),
+    waitUnthrottled(2000, null),
   ]);
+  if (!results) return errorResponse('Search is not available or took too long to respond');
   if (results.matches(selectors.searchNoChatsContainer))
     return errorResponse('Group chat not found');
 
@@ -47,10 +67,9 @@ async function sendMessageToGroup(
   );
   if (!groupTitle) return errorResponse('Group chat not found');
   groupTitle.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-
   await waitReactRerender();
-  await wait(100);
 
+  await waitUnthrottled(250);
   const composer = await waitForElement(selectors.composerTextbox);
   if (!composer) return errorResponse('Message composer is not available.');
   setReactContentEditableValue(composer, messageText);
@@ -64,13 +83,7 @@ async function sendMessageToGroup(
 
 //
 //
-//
-//
-//
 // utils
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function waitForElement<TElement extends HTMLElement>(
   selector: string,
@@ -111,16 +124,13 @@ function findElementByTextContent<TElement extends HTMLElement>(
 }
 
 function setReactInputValue(input: HTMLInputElement, newValue: string) {
-  // 1. Get the native input value setter bypassing React's overridden setter
   const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
     window.HTMLInputElement.prototype,
     'value',
   )!.set;
 
-  // 2. Call the native setter on our target input element
   nativeInputValueSetter!.call(input, newValue);
 
-  // 3. Dispatch a bubbling input event so React's event delegation detects it
   const inputEvent = new Event('input', { bubbles: true });
   input.dispatchEvent(inputEvent);
 }
@@ -129,18 +139,14 @@ function setReactContentEditableValue(element: HTMLElement, newText: string) {
   if (element.getAttribute('contenteditable') !== 'true')
     throw new Error('Element is not contenteditable');
 
-  // 1. Focus the element so the browser registers it as active
   element.focus();
-
-  // 2. Change the actual visual/DOM text content
   element.innerText = newText;
 
-  // 3. Create and dispatch a native InputEvent mimicking human typing
   const inputEvent = new InputEvent('input', {
-    bubbles: true, // MANDATORY: React relies on event delegation
+    bubbles: true,
     cancelable: true,
-    inputType: 'insertText', // Mimics standard keyboard text insertion
-    data: newText, // The string data that was "typed"
+    inputType: 'insertText',
+    data: newText,
   });
 
   element.dispatchEvent(inputEvent);
@@ -152,6 +158,14 @@ function waitReactRerender() {
       const channel = new MessageChannel();
       channel.port1.onmessage = () => resolve(undefined);
       channel.port2.postMessage(undefined);
+    }, 0);
+  });
+}
+
+function waitUnthrottled<T>(ms: number, result?: T): Promise<T> {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: 'scheduler:wait', payload: ms }, () => {
+      resolve(result as T);
     });
   });
 }

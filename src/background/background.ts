@@ -54,6 +54,8 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 async function handleRuntimeRequest(message: RuntimeRequest): Promise<RuntimeResponse> {
   switch (message.type) {
+    case 'scheduler:wait':
+      return { ok: true, status: await getStatus(), note: await wait(message.payload) };
     case 'scheduler:get-status':
       return {
         ok: true,
@@ -121,6 +123,7 @@ async function stopScheduler(): Promise<RuntimeResponse> {
 
 async function runScheduledSend(alarm: chrome.alarms.Alarm): Promise<void> {
   const currentState = await getStoredState();
+
   if (!currentState.enabled || currentState.scheduleTimes.length === 0) {
     await chrome.alarms.clear(ALARM_NAME);
     return;
@@ -168,6 +171,7 @@ async function dispatchMessage(state: SchedulerState): Promise<ContentResponse> 
       messageText: state.messageText,
       extensionConfig: state.extensionConfig,
     },
+    note: `Scheduled send at ${parseTimestampToHHmm(Date.now())}, nextRunAt: ${parseTimestampToHHmm(state.nextRunAt ?? 0)}, lastRunAt: ${parseTimestampToHHmm(state.lastRunAt ?? 0)}, lastError: ${state.lastError ?? 'none'}`,
   };
 
   try {
@@ -373,4 +377,16 @@ function getNextRunTimestamp(scheduleTimes: string[], nowMs: number): number {
   nextDay.setDate(nextDay.getDate() + 1);
   nextDay.setHours(Math.floor(firstMinutes / 60), firstMinutes % 60, 0, 0);
   return nextDay.getTime();
+}
+
+function parseTimestampToHHmm(timestamp: number | string | Date): string {
+  const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return '00:00';
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+function wait(ms: number): Promise<string> {
+  return new Promise((resolve) => setTimeout(() => resolve('done'), ms));
 }

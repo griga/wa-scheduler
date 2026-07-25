@@ -5,7 +5,7 @@
   --popup-text: #141824;
   --details-bg: #f7f9fc;
   --details-border: #d0d4de;
-  --muted-text: #505b70;
+  --muted-text: #3c3f47;
   --field-bg: #ffffff;
   --field-border: #a9b2c5;
   --button-bg: #f3f5fa;
@@ -91,6 +91,13 @@ button {
   margin-top: 10px;
   font-size: 12px;
   white-space: pre-line;
+}
+
+.version {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted-text);
+  text-align: right;
 }
 
 @media (prefers-color-scheme: dark) {

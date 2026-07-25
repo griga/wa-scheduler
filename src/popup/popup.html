@@ -9,13 +9,13 @@
     <h1>WhatsApp scheduler</h1>
 
     <form id="schedulerForm">
-      <label for="groupChatName">groupchatname</label>
+      <label for="groupChatName">chat name</label>
       <input id="groupChatName" name="groupChatName" autocomplete="off" required>
 
-      <label for="messageText">messagetxt</label>
+      <label for="messageText">message text</label>
       <textarea id="messageText" name="messageText" required></textarea>
 
-      <label for="scheduleTimes">scheduleTimes</label>
+      <label for="scheduleTimes">schedule times</label>
       <textarea
         id="scheduleTimes"
         name="scheduleTimes"
@@ -30,7 +30,7 @@
       </div>
 
       <details>
-        <summary>Advanced: WhatsApp Selectors</summary>
+        <summary>Advanced Settings</summary>
         <p class="advanced-note">
           Keep these defaults unless WhatsApp Web changes. This section is for extension-level
           troubleshooting.
@@ -87,6 +87,7 @@
     </form>
 
     <div id="status" class="status">Loading…</div>
+    <div id="appVersion" class="version">Version -</div>
     <script type="module" src="./popup.js"></script>
   </body>
 </html>

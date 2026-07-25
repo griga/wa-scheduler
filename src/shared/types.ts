@@ -32,6 +32,7 @@ export interface SchedulerStatus extends SchedulerState {
 }
 
 export type RuntimeRequest =
+  | { type: 'scheduler:wait'; payload: number }
   | { type: 'scheduler:get-status' }
   | { type: 'scheduler:start'; payload: SchedulerInput }
   | { type: 'scheduler:stop' };
@@ -43,6 +44,7 @@ export type RuntimeResponse =
 export type ContentRequest = {
   type: 'whatsapp:send-message';
   payload: Pick<SchedulerInput, 'groupChatName' | 'messageText' | 'extensionConfig'>;
+  note?: string;
 };
 
 export type ContentResponse = { ok: true } | { ok: false; error: string };
