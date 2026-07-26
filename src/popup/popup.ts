@@ -160,7 +160,7 @@ function renderResponse(response: RuntimeResponse): void {
     response.ok ? 'Scheduler: OK' : `Scheduler error: ${response.error}`,
     status.enabled ? 'State: running' : 'State: stopped',
     `WhatsApp tab: ${status.whatsappTabOpen ? 'open' : 'missing'}`,
-    `Schedule: ${status.scheduleTimes.join(' ') || '-'}`,
+    // `Schedule: ${status.scheduleTimes.join(' ') || '-'}`,
     `Next run: ${formatTimestamp(status.nextRunAt)}`,
     `Last run: ${formatTimestamp(status.lastRunAt)}`,
   ];
@@ -389,7 +389,7 @@ function parseScheduleTimes(
 function normalizeTimeToken(
   token: string,
 ): { ok: true; time: string } | { ok: false; error: string } {
-  const match = token.match(/^(\d{1,2})(:(\d{2}))?$/);
+  const match = token.match(/^(\d{1,2})(:?(\d{2}))?$/);
   if (!match) {
     return {
       ok: false,

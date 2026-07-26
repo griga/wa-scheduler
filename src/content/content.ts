@@ -51,14 +51,12 @@ async function sendMessageToGroupOnce(
   await waitReactRerender();
   await waitUnthrottled(250);
 
-  const results = await Promise.race([
-    waitForElement(selectors.searchResultsContainer),
-    waitForElement(selectors.searchNoChatsContainer),
-    waitUnthrottled(2000, null),
-  ]);
-  if (!results) return errorResponse('Search is not available or took too long to respond');
-  if (results.matches(selectors.searchNoChatsContainer))
-    return errorResponse('Group chat not found');
+  const results = await waitForElementWithTimeout(selectors.searchResultsContainer, 2000);
+  if (!results) {
+    const noChats = await waitForElementWithTimeout(selectors.searchNoChatsContainer, 2000);
+    if (noChats) return errorResponse('Group chat not found');
+    return errorResponse('Search is not available or took too long to respond');
+  }
 
   const groupTitle = findElementByTextContent<HTMLElement>(
     results,
@@ -102,6 +100,14 @@ function waitForElement<TElement extends HTMLElement>(
 
     observer.observe(root, { childList: true, subtree: true, attributes: true });
   });
+}
+
+function waitForElementWithTimeout<TElement extends HTMLElement>(
+  selector: string,
+  timeoutMs: number,
+  root: HTMLElement | Document = document.documentElement,
+): Promise<TElement | null> {
+  return Promise.race([waitForElement<TElement>(selector, root), waitUnthrottled(timeoutMs, null)]);
 }
 
 function findElementByTextContent<TElement extends HTMLElement>(
