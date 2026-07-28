@@ -1,12 +1,12 @@
 // 1. Force visibility getters to always return visible
 Object.defineProperty(document, 'visibilityState', {
   get: () => 'visible',
-  configurable: true
+  configurable: true,
 });
 
 Object.defineProperty(document, 'hidden', {
   get: () => false,
-  configurable: true
+  configurable: true,
 });
 
 // 2. Intercept and block visibility change events from reaching WhatsApp's listeners
@@ -16,5 +16,5 @@ document.addEventListener('visibilitychange', (e) => e.stopImmediatePropagation(
 // 3. Optional: Fake focus state
 Object.defineProperty(document, 'hasFocus', {
   value: () => true,
-  writable: false
+  writable: false,
 });

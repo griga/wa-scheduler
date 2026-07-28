@@ -17,6 +17,7 @@ const {
   updateButton,
   stopButton,
   statusNode,
+  headerChatTitleSelectorInput,
   chatsButtonSelectorInput,
   chatListSearchContainerSelectorInput,
   chatListSearchInputSelectorInput,
@@ -35,6 +36,7 @@ const {
   updateButton: '#updateBtn',
   stopButton: '#stopBtn',
   statusNode: '#status',
+  headerChatTitleSelectorInput: '#selectorHeaderChatTitle',
   chatsButtonSelectorInput: '#selectorChatsButton',
   chatListSearchContainerSelectorInput: '#selectorChatListSearchContainer',
   chatListSearchInputSelectorInput: '#selectorChatListSearchInput',
@@ -53,6 +55,7 @@ const {
   updateButton: HTMLButtonElement;
   stopButton: HTMLButtonElement;
   statusNode: HTMLDivElement;
+  headerChatTitleSelectorInput: HTMLInputElement;
   chatsButtonSelectorInput: HTMLInputElement;
   chatListSearchContainerSelectorInput: HTMLInputElement;
   chatListSearchInputSelectorInput: HTMLInputElement;
@@ -316,6 +319,7 @@ function emptyStatus(): SchedulerStatus {
     scheduleTimes: [],
     extensionConfig: {
       whatsappSelectors: {
+        headerChatTitle: '[data-testid="conversation-info-header-chat-title"]',
         chatsButton: "[aria-label='Chats']",
         chatListSearchContainer: "[data-testid='chat-list-search-container']",
         chatListSearchInput: "[data-testid='chat-list-search-container'] [role='textbox']",
@@ -335,6 +339,7 @@ function emptyStatus(): SchedulerStatus {
 
 function getExtensionConfigFromForm(): ExtensionConfig {
   const selectors: WhatsAppSelectors = {
+    headerChatTitle: headerChatTitleSelectorInput.value,
     chatsButton: chatsButtonSelectorInput.value,
     chatListSearchContainer: chatListSearchContainerSelectorInput.value,
     chatListSearchInput: chatListSearchInputSelectorInput.value,
@@ -349,6 +354,7 @@ function getExtensionConfigFromForm(): ExtensionConfig {
 }
 
 function applySelectorsToForm(selectors: WhatsAppSelectors): void {
+  headerChatTitleSelectorInput.value = selectors.headerChatTitle;
   chatsButtonSelectorInput.value = selectors.chatsButton;
   chatListSearchContainerSelectorInput.value = selectors.chatListSearchContainer;
   chatListSearchInputSelectorInput.value = selectors.chatListSearchInput;

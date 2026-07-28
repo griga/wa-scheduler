@@ -1,4 +1,5 @@
 export interface WhatsAppSelectors {
+  headerChatTitle: string;
   chatsButton: string;
   chatListSearchContainer: string;
   chatListSearchInput: string;

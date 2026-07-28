@@ -37,8 +37,7 @@ async function sendMessageToGroupOnce(
   messageText: string,
   $$$: WhatsAppSelectors,
 ): Promise<ContentResponse> {
-  const headerChatTitle = '[data-testid="conversation-info-header-chat-title"]';
-  const headerChatTitleElement = document.querySelector<HTMLElement>(headerChatTitle);
+  const headerChatTitleElement = document.querySelector<HTMLElement>($$$.headerChatTitle);
   if (
     headerChatTitleElement?.innerText.trim().toLowerCase() === groupChatName.trim().toLowerCase()
   ) {

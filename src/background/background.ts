@@ -15,6 +15,7 @@ const ALARM_NAME = 'wa-scheduler-send';
 const ALARM_FRESHNESS_WINDOW_MS = 60 * 1000;
 
 const DEFAULT_WHATSAPP_SELECTORS: WhatsAppSelectors = {
+  headerChatTitle: '[data-testid="conversation-info-header-chat-title"]',
   chatsButton: "[data-navbar-item-index='0']",
   chatListSearchContainer: "[data-testid='chat-list-search-container']",
   chatListSearchInput: "[data-testid='chat-list-search-container'] [role='textbox']",
@@ -290,6 +291,10 @@ function normalizeExtensionConfig(raw: unknown): ExtensionConfig {
 
   return {
     whatsappSelectors: {
+      headerChatTitle: normalizeSelector(
+        selectors?.headerChatTitle,
+        DEFAULT_WHATSAPP_SELECTORS.headerChatTitle,
+      ),
       chatsButton: normalizeSelector(
         selectors?.chatsButton,
         DEFAULT_WHATSAPP_SELECTORS.chatsButton,
