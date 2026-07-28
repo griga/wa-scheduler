@@ -86,6 +86,7 @@ async function startScheduler(payload: SchedulerInput): Promise<RuntimeResponse>
 
   const scheduleTimes = normalizeAndSortScheduleTimes(payload.scheduleTimes);
   const nextRunAt = getNextRunTimestamp(scheduleTimes, Date.now());
+  const currentState = await getStoredState();
   const nextState: SchedulerState = {
     enabled: true,
     groupChatName: payload.groupChatName.trim(),
@@ -93,7 +94,7 @@ async function startScheduler(payload: SchedulerInput): Promise<RuntimeResponse>
     scheduleTimes,
     extensionConfig: normalizeExtensionConfig(payload.extensionConfig),
     nextRunAt,
-    lastRunAt: null,
+    lastRunAt: currentState.lastRunAt ?? null,
     lastError: null,
   };
 
@@ -163,7 +164,7 @@ async function runScheduledSend(alarm: chrome.alarms.Alarm): Promise<void> {
 async function dispatchMessage(state: SchedulerState): Promise<ContentResponse> {
   const whatsappTab = await findWhatsAppTab();
   if (!whatsappTab?.id) return errorResponse('WhatsApp Web tab is not open. Skipped this alarm.');
-
+  chrome.tabs.update(whatsappTab.id, { autoDiscardable: false });
   const request: ContentRequest = {
     type: 'whatsapp:send-message',
     payload: {

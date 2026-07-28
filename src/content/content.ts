@@ -16,6 +16,8 @@ async function sendMessageToGroup(
   selectors: WhatsAppSelectors,
   retryAttempts = 2,
 ): Promise<ContentResponse> {
+  void document.body.offsetHeight;
+  window.dispatchEvent(new Event('resize'));
   let lastResult: ContentResponse = errorResponse('Unable to send message');
 
   for (let attempt = 0; attempt <= retryAttempts; attempt += 1) {
@@ -33,49 +35,67 @@ async function sendMessageToGroup(
 async function sendMessageToGroupOnce(
   groupChatName: string,
   messageText: string,
-  selectors: WhatsAppSelectors,
+  $$$: WhatsAppSelectors,
 ): Promise<ContentResponse> {
-  const chatsBtn = await waitForElement(selectors.chatsButton);
-  if (!chatsBtn) return errorResponse('WhatsApp Web is not ready yet.');
-  chatsBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-  await waitReactRerender();
-  await waitUnthrottled(250);
-
-  const chatListSearch = await waitForElement(selectors.chatListSearchContainer);
-  if (!chatListSearch) return errorResponse('WhatsApp Web chat list is not ready yet.');
-
-  const searchBox = await waitForElement<HTMLInputElement>(selectors.chatListSearchInput);
-  if (!searchBox) return errorResponse('Search box not found');
-  setReactInputValue(searchBox, groupChatName);
-
-  await waitReactRerender();
-  await waitUnthrottled(250);
-
-  const results = await waitForElementWithTimeout(selectors.searchResultsContainer, 2000);
-  if (!results) {
-    const noChats = await waitForElementWithTimeout(selectors.searchNoChatsContainer, 2000);
-    if (noChats) return errorResponse('Group chat not found');
-    return errorResponse('Search is not available or took too long to respond');
+  const headerChatTitle = '[data-testid="conversation-info-header-chat-title"]';
+  const headerChatTitleElement = document.querySelector<HTMLElement>(headerChatTitle);
+  if (
+    headerChatTitleElement?.innerText.trim().toLowerCase() === groupChatName.trim().toLowerCase()
+  ) {
+    const sendResult = await typeAndSendMessage(messageText, $$$);
+    return sendResult;
   }
 
-  const groupTitle = findElementByTextContent<HTMLElement>(
-    results,
-    selectors.searchResultTitleItem,
-    groupChatName,
-  );
-  if (!groupTitle) return errorResponse('Group chat not found');
-  groupTitle.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-  await waitReactRerender();
+  const chatsBtn = await waitForElement($$$.chatsButton);
+  if (!chatsBtn) return errorResponse('WhatsApp Web is not ready yet.');
+  chatsBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  await waitReactRenderWithTimeout(250);
 
-  await waitUnthrottled(250);
-  const composer = await waitForElement(selectors.composerTextbox);
+  const chatListSearch = await waitForElement($$$.chatListSearchContainer);
+  if (!chatListSearch) return errorResponse('WhatsApp Web chat list is not ready yet.');
+
+  const searchBox = await waitForElement<HTMLInputElement>($$$.chatListSearchInput);
+  if (!searchBox) return errorResponse('Search box not found');
+  const previousSearchValue = searchBox.value;
+  try {
+    setReactInputValue(searchBox, groupChatName);
+    await waitReactRenderWithTimeout(250);
+
+    const results = await waitForElementWithTimeout($$$.searchResultsContainer, 2000);
+    if (!results) {
+      const noChats = await waitForElementWithTimeout($$$.searchNoChatsContainer, 2000);
+      if (noChats) return errorResponse('Group chat not found');
+      return errorResponse('Search is not available or took too long to respond');
+    }
+
+    const groupTitle = findElementByTextContent(results, $$$.searchResultTitleItem, groupChatName);
+    if (!groupTitle) return errorResponse('Group chat not found');
+    groupTitle.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    await waitReactRenderWithTimeout(250);
+
+    const sendResult = await typeAndSendMessage(messageText, $$$);
+    return sendResult;
+  } finally {
+    const latestSearchBox = document.querySelector<HTMLInputElement>($$$.chatListSearchInput);
+    if (latestSearchBox) {
+      setReactInputValue(latestSearchBox, previousSearchValue);
+      await waitReactRerender();
+    }
+  }
+}
+
+async function typeAndSendMessage(
+  messageText: string,
+  $$$: WhatsAppSelectors,
+): Promise<ContentResponse> {
+  const composer = await waitForElement($$$.composerTextbox);
   if (!composer) return errorResponse('Message composer is not available.');
   setReactContentEditableValue(composer, messageText);
 
-  const sendBtn = await waitForElement(selectors.sendButton);
+  const sendBtn = await waitForElement($$$.sendButton);
   if (!sendBtn) return errorResponse('Send button is not available.');
   sendBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-
+  await waitReactRerender();
   return successResponse();
 }
 
@@ -160,11 +180,9 @@ function setReactContentEditableValue(element: HTMLElement, newText: string) {
 
 function waitReactRerender() {
   return new Promise((resolve) => {
-    setTimeout(() => {
-      const channel = new MessageChannel();
-      channel.port1.onmessage = () => resolve(undefined);
-      channel.port2.postMessage(undefined);
-    }, 0);
+    const channel = new MessageChannel();
+    channel.port1.onmessage = () => resolve(undefined);
+    channel.port2.postMessage(undefined);
   });
 }
 
@@ -174,6 +192,11 @@ function waitUnthrottled<T>(ms: number, result?: T): Promise<T> {
       resolve(result as T);
     });
   });
+}
+
+async function waitReactRenderWithTimeout<T>(ms: number, result?: T): Promise<T> {
+  await waitReactRerender();
+  return await waitUnthrottled(ms, result);
 }
 
 //

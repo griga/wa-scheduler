@@ -19,6 +19,7 @@ export default defineConfig({
         popup: resolve(__dirname, 'src/popup/popup.ts'),
         background: resolve(__dirname, 'src/background/background.ts'),
         content: resolve(__dirname, 'src/content/content.ts'),
+        'main-world-spoof': resolve(__dirname, 'src/content/main-world-spoof.ts'),
       },
       output: {
         entryFileNames: '[name].js',
