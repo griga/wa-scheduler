@@ -75,12 +75,20 @@ pnpm run format     # format only
 
 ### Schedule times
 
-Enter one time per line in `HH:MM` (24-hour) format in the popup, e.g.:
+Enter time tokens in any of following (24-hour) formats:
+- `H` (e.g. `8`, `9`)
+- `HH` (e.g. `13`, `22`)
+- `H:MM` (e.g. `8:30`, `9:15`)
+- `HH:MM` (e.g. `08:30`, `13:00`)
+- `HMM` (e.g. `830`, `915`)
+- `HHMM` (e.g. `0830`, `1300`)
 
+Tokens can be separated by any whitespace (spaces, tabs, newlines) and/or commas.
+
+Examples:
 ```
-08:00
-13:30
-20:00
+08:00, 13:30 20:00
+9, 1030 14:15
 ```
 
 ### DOM selectors
